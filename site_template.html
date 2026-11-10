@@ -659,19 +659,6 @@ function pageStats() {
       <div class="card scroll" id="rating"></div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Пульс редакции</h2><p>Каждый квадрат — день с ${dmy(DB.firstDay)}. Чем ярче, тем больше постов. Наведите, чтобы увидеть число и редакторов дня.</p></div>
-      <div class="card scroll" id="pulse"></div>
-    </section>
-
-    <section class="section">
-      <div class="section-head"><h2>Поток постов</h2><p id="flow-note"></p></div>
-      <div class="card" style="display:grid;gap:12px">
-        <div class="legend">${DB.editors.map(e => `<span><i style="background:${COLORS[e.key]}"></i>${esc(e.name)}</span>`).join("")}</div>
-        <div class="chart-box small"><canvas id="ch-flow" aria-label="Посты по дням"></canvas></div>
-      </div>
-    </section>
-
 
     <section class="section">
       <div class="section-head"><h2>Что зашло читателям</h2><p>Посты с наибольшим числом репостов за ${label} и самые частые реакции.</p></div>
@@ -756,40 +743,6 @@ function drawStats() {
   }
   drawRating();
 
-  /* пульс */
-  const first = dayNum(DB.firstDay), last = LASTDAY;
-  const perDay = {}, whoDay = {};
-  DB.counted.forEach(p => { const n = dayNum(p.d); perDay[n] = (perDay[n] || 0) + 1;
-    (whoDay[n] = whoDay[n] || {}); p.e.forEach(k => whoDay[n][k] = (whoDay[n][k] || 0) + 1); });
-  const maxDay = Math.max(...Object.values(perDay), 1);
-  const lvl = v => !v ? 0 : Math.min(4, 1 + Math.floor((v / maxDay) * 3.999));
-  let cells = "", months = "", lastMonth = "";
-  const startPad = dow(DB.firstDay);
-  for (let i = 0; i < startPad; i++) cells += `<span></span>`;
-  for (let n = first; n <= last; n++) {
-    const d = numDay(n), v = perDay[n] || 0;
-    const who = Object.entries(whoDay[n] || {}).sort((x, y) => y[1] - x[1]).map(([k, c]) => `${esc(ED[k].name)} ${c}`).join(", ");
-    cells += `<span class="c" style="background:var(--heat-${lvl(v)})" data-tip="<b>${dmy(d)}</b> · ${v} ${plural(v, "пост", "поста", "постов")}${who ? "<br>" + who : ""}"></span>`;
-  }
-  const weeksN = Math.ceil((last - first + 1 + startPad) / 7);
-  for (let w = 0; w < weeksN; w++) {
-    const d = numDay(first - startPad + w * 7), m = MONTHS[+d.slice(5, 7) - 1];
-    months += `<span>${m !== lastMonth ? m : ""}</span>`; lastMonth = m;
-  }
-  $("#pulse").innerHTML = `<div class="heat-wrap"><div></div><div class="heat-months">${months}</div>
-    <div class="heat-days">${DOW.map((d, i) => `<span>${i % 2 ? "" : d}</span>`).join("")}</div>
-    <div class="heat-cal">${cells}</div></div>
-    <div class="scale" style="margin-top:10px">меньше ${[0, 1, 2, 3, 4].map(i => `<span class="c" style="background:var(--heat-${i})"></span>`).join("")} больше</div>`;
-  tipOn($("#pulse"));
-
-  /* поток */
-  const days = []; for (let n = r.from; n <= r.to; n++) days.push(n);
-  const flowSets = DB.editors.map(e => ({ label: e.name, color: COLORS[e.key],
-    data: days.map(n => DB.counted.filter(p => dayNum(p.d) === n && p.e[0] === e.key).length) }));
-  barChart($("#ch-flow"), days.map(n => dm(numDay(n))), flowSets, { stacked: true, maxTicks: 12 });
-  let rec = 0, recDay = r.from; days.forEach(n => { const v = perDay[n] || 0; if (v > rec) { rec = v; recDay = n; } });
-  $("#flow-note").textContent = `Сколько постов выходило каждый день и у кого. Рекорд за период: ${dmy(numDay(recDay))} — ${rec} ${plural(rec, "пост", "поста", "постов")}. Совместный пост засчитан первому автору.`;
-
   /* что зашло */
   const topP = [...a.posts].sort((x, y) => y.fw - x.fw || x.id - y.id).slice(0, 6);
   $("#top-posts").innerHTML = topP.length ? topP.map((p, i) => postRow(p, i + 1)).join("") : `<p class="note">За период постов нет.</p>`;
@@ -831,8 +784,9 @@ function drawStats() {
   $("#badges").innerHTML = [
     badge("🔁", "Король репостов", pick(x => edKf(x.b)), x => `КФ ${edKf(x.b)}`),
     badge("❤️", "Любимец читателей", pick(x => x.b.r / x.b.posts), x => `${fmt(x.b.r / x.b.posts)} реакций на пост`),
-    badge("🦉", "Ночной сторож", pick(x => x.b.night / x.b.posts), x => `${pct(x.b.night, x.b.posts)}% постов с 00 до 06`),
-    badge("🎬", "Видеограф", pick(x => x.b.video / x.b.posts), x => `${pct(x.b.video, x.b.posts)}% постов с видео`),
+    // «Ночной сторож» — только если кто-то вообще постил ночью (00–06), иначе ачивка пустая
+    eds.some(x => pct(x.b.night, x.b.posts) > 0)
+      ? badge("🦉", "Ночной сторож", pick(x => x.b.night / x.b.posts), x => `${pct(x.b.night, x.b.posts)}% постов с 00 до 06`) : "",
     badge("⚡", "Стахановец", pick(x => x.b.shifts ? x.b.posts / x.b.shifts : 0), x => `${(x.b.posts / Math.max(x.b.shifts, 1)).toFixed(1).replace(".", ",")} поста за смену`),
     badge("🏆", "Больше всех постов", pick(x => x.b.posts), x => `${fmt(x.b.posts)} ${plural(x.b.posts, "пост", "поста", "постов")}`),
   ].join("");
@@ -855,8 +809,8 @@ function drawStats() {
       ["КФ", b => edKf(b), v => v], ["Постов", b => b.posts, fmt], ["Репостов", b => b.fw, fmt],
       ["Смен", b => b.shifts, fmt], ["Постов за смену", b => b.shifts ? b.posts / b.shifts : 0, v => v.toFixed(1).replace(".", ",")],
       ["Просмотров на пост", b => b.posts ? b.v / b.posts : 0, short], ["Реакций на пост", b => b.posts ? b.r / b.posts : 0, fmt],
-      ["С видео, %", b => pct(b.video, b.posts), v => v], ["Ночных, %", b => pct(b.night, b.posts), v => v],
-    ];
+      ["Ночных, %", b => pct(b.night, b.posts), v => v],
+    ].filter(([t, f]) => t !== "Ночных, %" || f(A) || f(B));   // ночные — только если у кого-то они есть
     $("#duel").innerHTML = `<div class="duel-head"><span class="who" style="justify-content:flex-end"><b>${esc(ED[ka].name)}</b>${ava(ED[ka])}</span><span></span><span class="who">${ava(ED[kb])}<b>${esc(ED[kb].name)}</b></span></div>` +
       metrics.map(([t, f, show]) => { const va = f(A), vb = f(B), m = Math.max(va, vb, 1e-9);
         return `<div class="duel-row"><div class="l ${va > vb ? "win" : ""}"><b>${show(va)}</b><span class="duel-bar"><i style="width:${(va / m * 100).toFixed(1)}%;background:${COLORS[ka]}"></i></span></div>
