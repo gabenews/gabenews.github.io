@@ -47,6 +47,9 @@ jobs:
           TG_SESSION: ${{ secrets.TG_SESSION }}
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
           SCHEDULE_SHEET_ID: ${{ secrets.SCHEDULE_SHEET_ID }}
+          SITE_USERS: ${{ secrets.SITE_USERS }}
+          TG_NOTIFY_TOKEN: ${{ secrets.TG_NOTIFY_TOKEN }}
+          TG_NOTIFY_CHAT: ${{ secrets.TG_NOTIFY_CHAT }}
           PYTHONIOENCODING: utf-8
         run: |
           python build_site.py --export

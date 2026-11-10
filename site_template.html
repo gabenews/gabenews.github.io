@@ -363,13 +363,40 @@ const link = id => `https://t.me/${DB.channel}/${id}`;
 
 /* ---------- расшифровка ---------- */
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+let USER = null;                      // кто вошёл: { u: имя, o: владелец ли }
+// У каждого свой пароль: данные зашифрованы одним ключом, а ключ — паролем каждого пользователя.
 async function unlock(password) {
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  const key = await crypto.subtle.deriveKey(
+  const kek = await crypto.subtle.deriveKey(
     { name: "PBKDF2", salt: b64(VAULT.salt), iterations: VAULT.rounds, hash: "SHA-256" },
     base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(VAULT.iv) }, key, b64(VAULT.data));
+  let entry = null;
+  for (const k of VAULT.keys) {
+    try { entry = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(k.iv) }, kek, b64(k.w)))); break; }
+    catch (_) { /* не этот пользователь */ }
+  }
+  if (!entry) throw new Error("wrong password");
+  const dk = await crypto.subtle.importKey("raw", b64(entry.k), "AES-GCM", false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(VAULT.iv) }, dk, b64(VAULT.data));
+  USER = { u: entry.u, o: !!entry.o };
   return JSON.parse(new TextDecoder().decode(plain));
+}
+
+// Уведомление владельцу в Telegram: кто открыл сайт. Заходы самого владельца не присылаются,
+// с одного устройства — не чаще раза в 30 минут.
+function notifyVisit() {
+  const n = DB.notify;
+  if (!n || !USER || USER.o) return;
+  const KEY = "gabestats-visit-ping";
+  try { if (Date.now() - (+localStorage.getItem(KEY) || 0) < 30 * 60e3) return; localStorage.setItem(KEY, String(Date.now())); } catch (_) {}
+  const now = new Date(Date.now() + 3 * 3600e3);   // время МСК
+  const when = `${now.getUTCDate()} ${MONTHS[now.getUTCMonth()]}, ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")} МСК`;
+  const tabs = { stats: "Статистика", week: "Текущая неделя", schedule: "Расписание", team: "Состав" };
+  const h = location.hash.slice(1), tab = tabs[h] || (BYSLUG[h] ? `профиль ${BYSLUG[h].name}` : "Статистика");
+  const mobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const text = `👀 ${USER.u} открыл(а) сайт\n🕒 ${when}\n${mobile ? "📱 с телефона" : "💻 с компьютера"} · вкладка «${tab}»`;
+  const url = `https://api.telegram.org/bot${n.token}/sendMessage?chat_id=${encodeURIComponent(n.chat)}&text=${encodeURIComponent(text)}`;
+  fetch(url, { mode: "no-cors" }).catch(() => {});
 }
 function lockScreen(message = "") {
   $("#app").innerHTML = `
@@ -1114,12 +1141,21 @@ async function poll() {
     const box = JSON.parse(m[1]);
     if (box.data === VAULT.data) return;
     VAULT = box;
-    const fresh = await unlock(PASS);
+    let fresh;
+    try { fresh = await unlock(PASS); }
+    catch (_) {                       // пароль этого человека отключили или сменили — снова экран пароля
+      try { localStorage.removeItem(STORE_KEY); } catch (__) {}
+      PASS = null; DB = null; return lockScreen("Ваш пароль больше не действует. Попросите новый у владельца сайта.");
+    }
     DB = fresh; ED = {}; BYSLUG = {}; prepare(); render(true);
   } catch (_) { /* нет сети или файл не обновился — попробуем позже */ }
 }
+let STARTED = false;
 function start() {
-  prepare();
+  ED = {}; BYSLUG = {}; prepare();
+  notifyVisit();
+  if (STARTED) return render(false);   // повторный вход после экрана пароля — без повторных подписок
+  STARTED = true;
   setInterval(poll, POLL_MIN * 60e3);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   addEventListener("hashchange", () => render(false));

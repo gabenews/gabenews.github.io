@@ -150,21 +150,56 @@ def payload():
     }
 
 
-def encrypt(data, password):
-    salt, iv = os.urandom(16), os.urandom(12)
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ROUNDS, dklen=32)
-    ct = AESGCM(key).encrypt(iv, json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), None)
+USERS_FILE = HERE / "site_users.json"
+
+
+def site_users():
+    """Кто может открыть сайт: {имя: {"password": ..., "owner": bool}}.
+    Секрет SITE_USERS (JSON) или site_users.json; если их нет — один общий пароль владельца, как раньше."""
+    raw = os.environ.get("SITE_USERS")
+    if not raw and USERS_FILE.exists():
+        raw = USERS_FILE.read_text(encoding="utf-8")
+    if raw:
+        users = json.loads(raw)
+    else:
+        pw = os.environ.get("SITE_PASSWORD") or PASSWORD_FILE.read_text(encoding="utf-8").strip()
+        users = {"Владелец": {"password": pw, "owner": True}}
+    pws = [u["password"] for u in users.values()]
+    assert len(pws) == len(set(pws)), "пароли пользователей должны быть разными"
+    return users
+
+
+def encrypt(data, users):
+    """Данные шифруются одним случайным ключом, а этот ключ — отдельно паролем каждого пользователя.
+    По тому, чей пароль подошёл, страница понимает, кто вошёл."""
     b64 = lambda b: base64.b64encode(b).decode()
-    return {"salt": b64(salt), "iv": b64(iv), "rounds": PBKDF2_ROUNDS, "data": b64(ct)}
+    data_key, iv, salt = os.urandom(32), os.urandom(12), os.urandom(16)
+    ct = AESGCM(data_key).encrypt(iv, json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), None)
+    keys = []
+    for name, u in users.items():
+        kek = hashlib.pbkdf2_hmac("sha256", u["password"].encode("utf-8"), salt, PBKDF2_ROUNDS, dklen=32)
+        kiv = os.urandom(12)
+        entry = json.dumps({"k": b64(data_key), "u": name, "o": bool(u.get("owner"))}, ensure_ascii=False)
+        keys.append({"iv": b64(kiv), "w": b64(AESGCM(kek).encrypt(kiv, entry.encode("utf-8"), None))})
+    keys.sort(key=lambda k: k["w"])   # порядок не выдаёт, кто есть кто
+    return {"v": 2, "salt": b64(salt), "rounds": PBKDF2_ROUNDS, "iv": b64(iv), "data": b64(ct), "keys": keys}
+
+
+def notify_config():
+    """Бот для уведомлений «кто зашёл»: секреты TG_NOTIFY_TOKEN / TG_NOTIFY_CHAT или config_local.json."""
+    token = os.environ.get("TG_NOTIFY_TOKEN") or s.CONFIG.get("notify_token")
+    chat = os.environ.get("TG_NOTIFY_CHAT") or s.CONFIG.get("notify_chat")
+    return {"token": token, "chat": str(chat)} if token and chat else None
 
 
 def main():
     if "--export" in sys.argv:
         import export_posts
         export_posts.main()
-    password = os.environ.get("SITE_PASSWORD") or PASSWORD_FILE.read_text(encoding="utf-8").strip()
+    users = site_users()
     data = payload()
-    box = encrypt(data, password)
+    data["notify"] = notify_config()          # внутри шифра: без пароля его не видно
+    box = encrypt(data, users)
     html = TEMPLATE.read_text(encoding="utf-8").replace("/*__VAULT__*/null", json.dumps(box))
     # логотип не секретный — он нужен уже на экране пароля, поэтому лежит вне шифра
     brand = HERE / "brand"
@@ -183,7 +218,8 @@ def main():
     (SITE / "index.html").write_text(page, encoding="utf-8")
     n = sum(1 for p in data["posts"] if p["k"] == "post")
     print(f"Сайт собран: {SITE / 'index.html'} — {n} учтённых постов, {len(data['shifts'])} смен, "
-          f"{sum(1 for w in data['weeks'] if w['official'])} недель с отчётами, {len(html) // 1024} КБ")
+          f"{sum(1 for w in data['weeks'] if w['official'])} недель с отчётами, {len(html) // 1024} КБ, "
+          f"паролей: {len(users)}, уведомления: {'да' if data['notify'] else 'нет'}")
 
 
 if __name__ == "__main__":
