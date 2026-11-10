@@ -14,6 +14,7 @@
 !build_site.py
 !send_summary.py
 !sync_data.py
+!schedule.py
 !site_template.html
 !brand/
 !brand/face.webp

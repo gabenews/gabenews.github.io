@@ -83,6 +83,39 @@ button { font: inherit; color: inherit; }
 .top .spacer { flex: 1; }
 .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-left: 4px; vertical-align: 2px; box-shadow: 0 0 0 0 var(--bad); animation: pulse 2s infinite; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 60%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cal-h { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 800; text-align: center; padding-bottom: 2px; }
+.cal-d { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: grid; gap: 6px; align-content: start; min-height: 118px; min-width: 0; }
+.cal-d.pad { background: transparent; border-color: transparent; }
+.cal-d.past { opacity: .78; }
+.cal-d.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; opacity: 1; }
+.cal-num { display: flex; justify-content: space-between; align-items: center; font: 800 15px/1 var(--font-display); }
+.cal-num small { font: 800 10px/1 var(--font-body); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 999px; background: var(--accent-grad); color: var(--accent-ink); }
+.cal-num .wd { display: none; color: var(--muted); font: 700 12px/1 var(--font-body); }
+.slot { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: center; padding: 5px 6px; border-radius: 8px; background: var(--surface-2); border-left: 3px solid var(--sc, var(--faint)); min-width: 0; }
+.slot .ava { width: 22px; height: 22px; border-radius: 6px; }
+.slot b { font-size: 12px; font-weight: 800; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot small { display: block; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot small.ok { color: var(--good); }
+.slot small.off { color: var(--bad); }
+.slot.empty { border-left-color: var(--line); color: var(--faint); grid-template-columns: 1fr; font-size: 11px; }
+.slot.gone b { color: var(--muted); font-weight: 700; }
+.sched-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.sched-ed { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--sc); font-size: 13px; }
+.sched-ed .ava { width: 26px; height: 26px; border-radius: 7px; }
+.sched-ed span { color: var(--muted); font-size: 12px; }
+.upcoming { display: grid; gap: 6px; }
+.upcoming .row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.upcoming .row.today { border-color: var(--accent); }
+.upcoming .row span { color: var(--muted); }
+@media (max-width: 760px) {
+  .cal { grid-template-columns: minmax(0, 1fr); }
+  .cal-h, .cal-d.pad { display: none; }
+  .cal-d { min-height: 0; grid-template-columns: 70px 1fr 1fr; align-items: center; }
+  .cal-num { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .cal-num .wd { display: block; }
+}
+@media (max-width: 420px) { .cal-d { grid-template-columns: 1fr 1fr; } .cal-num { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; gap: 8px; } }
 .daytable td.today, .daytable th.today { background: var(--accent-soft); }
 .daytable td.future { color: var(--faint); }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
@@ -537,6 +570,7 @@ function shell(active, body) {
       <nav class="tabs" aria-label="Разделы">
         <a class="tab" href="#stats" ${active === "stats" ? 'aria-current="page"' : ""}>Статистика</a>
         <a class="tab" href="#week" ${active === "week" ? 'aria-current="page"' : ""}>Текущая неделя${DB.liveWeek ? ' <span class="live-dot" aria-hidden="true"></span>' : ""}</a>
+        <a class="tab" href="#schedule" ${active === "schedule" ? 'aria-current="page"' : ""}>Расписание</a>
         <a class="tab" href="#team" ${active === "team" ? 'aria-current="page"' : ""}>Состав</a>
       </nav><span class="spacer"></span>
       <span class="stamp">учтено по ${dmy(numDay(LASTDAY))} · обновлено ${dmy(DB.exported)}</span>
@@ -893,6 +927,86 @@ function drawWeek() {
   $("#live-feed").innerHTML = [...posts].sort((a, b) => b.id - a.id).slice(0, 8).map(p => postRow(p, "•")).join("") || `<p class="note">Постов пока нет.</p>`;
 }
 
+/* ---------- расписание ---------- */
+const SHIFT_ICON = { day: "☀", evening: "🌙" };
+function schedMonths() { return (DB.schedule && DB.schedule.months) || []; }
+function planOf(day, slot) {
+  for (const m of schedMonths()) if (m.days[day]) return m.days[day][slot] || null;
+  return null;
+}
+// Кто реально вёл смену: больше всех постов в окне смены (день 09–17, вечер 17–05 следующего дня)
+function actualOf(day, slot) {
+  const n = dayNum(day), cnt = {};
+  DB.posts.forEach(p => {
+    const pn = dayNum(p.d), h = +p.d.slice(11, 13);
+    const inDay = slot === "day" ? pn === n && h >= 9 && h < 17 : (pn === n && h >= 17) || (pn === n + 1 && h < 5);
+    if (inDay) p.e.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
+  });
+  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] >= DB.rules.shiftMin ? best[0] : null;
+}
+function slotHTML(day, shift, isPast) {
+  const pl = planOf(day, shift.key);
+  if (!pl) return `<div class="slot empty">${SHIFT_ICON[shift.key]} ${shift.name}: не назначено</div>`;
+  const e = pl.editor ? ED[pl.editor] : null;
+  let note = `${SHIFT_ICON[shift.key]} ${shift.name}`;
+  if (isPast && e) {
+    const fact = actualOf(day, shift.key);
+    note = fact === pl.editor ? `<small class="ok">${SHIFT_ICON[shift.key]} ✓ отработал</small>`
+      : fact ? `<small class="off">${SHIFT_ICON[shift.key]} фактически ${esc(ED[fact].name)}</small>` : `<small>${SHIFT_ICON[shift.key]} ${shift.name}</small>`;
+  } else note = `<small>${note}</small>`;
+  return `<div class="slot ${e ? "" : "gone"}" style="--sc:${e ? COLORS[e.key] : "var(--faint)"}" title="${shift.name} ${shift.time}">
+    ${e ? ava(e) : `<span class="ava"></span>`}<span><b>${esc(e ? e.name : pl.label)}</b>${note}</span></div>`;
+}
+function pageSchedule() {
+  const months = schedMonths();
+  if (!months.length) return shell("schedule", `<h1>Расписание</h1><p class="lead">Расписание сейчас не загрузилось из Google Таблицы. Оно появится при следующем обновлении сайта.</p>`);
+  // Показываем только текущий месяц (лист «Расписание <Месяц>»); если его ещё нет — последний из таблицы
+  const cur = TODAY.slice(0, 7);
+  const m = months.find(x => x.month === cur) || months[months.length - 1];
+  const [y, mo] = m.month.split("-").map(Number);
+  const first = numDay(Date.UTC(y, mo - 1, 1) / 864e5), daysIn = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  const shifts = DB.schedule.shifts, today = dayNum(TODAY);
+  // сколько смен у каждого в этом месяце
+  const tally = {};
+  Object.values(m.days).forEach(d => shifts.forEach(sh => { const pl = d[sh.key]; if (!pl) return;
+    const k = pl.editor || pl.label; (tally[k] = tally[k] || { day: 0, evening: 0, label: pl.label })[sh.key]++; }));
+  const legend = Object.entries(tally).sort((a, b) => (b[1].day + b[1].evening) - (a[1].day + a[1].evening)).map(([k, t]) => {
+    const e = ED[k];
+    return `<span class="sched-ed" style="--sc:${e ? COLORS[k] : "var(--faint)"}">${e ? ava(e) : ""}<b>${esc(e ? e.name : t.label)}</b>
+      <span>${t.day + t.evening} ${plural(t.day + t.evening, "смена", "смены", "смен")} · ☀ ${t.day} · 🌙 ${t.evening}</span></span>`; }).join("");
+  let cells = DOW.map(d => `<div class="cal-h">${d}</div>`).join("");
+  for (let i = 0; i < dow(first); i++) cells += `<div class="cal-d pad"></div>`;
+  for (let i = 0; i < daysIn; i++) {
+    const n = dayNum(first) + i, d = numDay(n), isToday = n === today, isPast = n < today;
+    cells += `<div class="cal-d ${isToday ? "today" : isPast ? "past" : ""}">
+      <div class="cal-num"><span>${i + 1}</span><span class="wd">${DOW[dow(d)]}</span>${isToday ? "<small>сегодня</small>" : ""}</div>
+      ${shifts.map(sh => slotHTML(d, sh, isPast)).join("")}</div>`;
+  }
+  return shell("schedule", `
+    <section class="hero">
+      <div class="hero-row">
+        <div><h1>Расписание <em>смен</em></h1>
+        <p class="lead">${shifts.map(sh => `${SHIFT_ICON[sh.key]} ${sh.name} ${sh.time}`).join(" · ")} · по МСК. Берётся из Google Таблицы «Gabe News | INFO» при каждом обновлении сайта.</p></div>
+      </div>
+      <div class="sched-legend">${legend}</div>
+    </section>
+    <section class="section">
+      <div class="section-head"><h2>${m.title}</h2><p>У прошедших смен отметка: ✓ — смену вёл тот, кто стоял в расписании; «фактически …» — больше всех постов в это время было у другого редактора.</p></div>
+      <div class="card"><div class="cal">${cells}</div></div>
+    </section>`);
+}
+function drawSchedule() {}
+function upcomingHTML(e) {
+  const out = [], today = dayNum(TODAY);
+  for (let n = today; n < today + 14 && out.length < 6; n++) {
+    const d = numDay(n);
+    (DB.schedule ? DB.schedule.shifts : []).forEach(sh => { const pl = planOf(d, sh.key);
+      if (pl && pl.editor === e.key) out.push(`<div class="row ${n === today ? "today" : ""}"><b>${n === today ? "Сегодня" : `${DOW[dow(d)]}, ${dmy(d)}`}</b><span>${SHIFT_ICON[sh.key]} ${sh.name} ${sh.time}</span></div>`); });
+  }
+  return out.length ? out.join("") : `<p class="note">В расписании на ближайшие две недели смен нет.</p>`;
+}
+
 function pageEditor(e) {
   const all = agg(range("all")), b = all.by[e.key];
   const ranking = DB.editors.map(x => ({ k: x.key, v: kf(all.by[x.key].fw, all.by[x.key].posts) })).sort((x, y) => y.v - x.v);
@@ -913,6 +1027,11 @@ function pageEditor(e) {
       <div class="profile-head">${ava(e, "lg")}<div><h1>${esc(e.name)}</h1>
         <div class="sub">${esc(e.role)} · Редакция Gabe News · подпись в канале «${esc(e.signature)}»</div></div></div>
       <div class="kpis">${tiles.map(([t, v, s]) => `<div class="kpi"><span class="kpi-val">${v}</span><span class="kpi-label">${t}</span><span class="note">${s}</span></div>`).join("")}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Ближайшие смены</h2><p>Из расписания на сайте. <a href="#schedule" style="color:var(--accent-text)">Всё расписание →</a></p></div>
+      <div class="upcoming">${upcomingHTML(e)}</div>
     </section>
 
     <section class="section">
@@ -972,9 +1091,10 @@ function render(keepScroll) {
   const e = BYSLUG[h];
   if (h === "team") { $("#app").innerHTML = pageTeam(); }
   else if (h === "week") { $("#app").innerHTML = pageWeek(); drawWeek(); }
+  else if (h === "schedule") { $("#app").innerHTML = pageSchedule(); drawSchedule(); }
   else if (e) { $("#app").innerHTML = pageEditor(e); drawEditor(e); }
   else { $("#app").innerHTML = pageStats(); drawStats(); }
-  document.title = h === "team" ? "Состав Gabe News" : h === "week" ? "Текущая неделя — Gabe News" : e ? `${e.name} — статистика Gabe News` : "Статистика Gabe News";
+  document.title = h === "team" ? "Состав Gabe News" : h === "week" ? "Текущая неделя — Gabe News" : h === "schedule" ? "Расписание — Gabe News" : e ? `${e.name} — статистика Gabe News` : "Статистика Gabe News";
   scrollTo(0, keepScroll ? y : 0);
 }
 // Автообновление: сайт пересобирается на сервере, а открытая страница сама подтягивает свежую версию.

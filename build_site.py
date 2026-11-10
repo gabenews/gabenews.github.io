@@ -15,6 +15,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+import schedule
 import stats as s
 from rich_table import DISPLAY_NAMES
 
@@ -141,6 +142,10 @@ def payload():
         "posts": posts,
         "shifts": shifts_of(editor_posts),
         "weeks": weekly_reports(),
+        # прошлые месяцы не нужны — только текущий (и следующий, если его уже внесли в таблицу)
+        "schedule": {"shifts": schedule.SHIFTS,
+                     "months": [m for m in schedule.load(datetime.now(s.MSK).date())
+                                if m["month"] >= datetime.now(s.MSK).strftime("%Y-%m")]},
         "rules": {"shiftMin": s.SHIFT_MIN_POSTS, "shiftGapH": s.SHIFT_MAX_GAP.seconds // 3600},
     }
 
