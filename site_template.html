@@ -101,7 +101,21 @@ button { font: inherit; color: inherit; }
 .slot.empty { border-left-color: var(--line); color: var(--faint); grid-template-columns: 1fr; font-size: 11px; }
 .slot.gone b { color: var(--muted); font-weight: 700; }
 .sched-legend { display: flex; flex-wrap: wrap; gap: 8px; }
-.sched-ed { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--sc); font-size: 13px; }
+.sched-ed { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--sc); font-size: 13px; cursor: pointer; text-align: left; }
+.sched-ed:hover { border-color: var(--sc); }
+.sched-ed[aria-pressed="true"] { background: color-mix(in srgb, var(--sc) 22%, var(--bg)); border-color: var(--sc); box-shadow: 0 0 0 1px var(--sc); }
+.sched-legend:has([aria-pressed="true"]) .sched-ed[aria-pressed="false"] { opacity: .55; }
+/* подсветка смен выбранного редактора */
+.cal.focus .slot { opacity: .28; filter: grayscale(.9); transition: opacity .15s; }
+.cal.focus .slot.hit { opacity: 1; filter: none; background: color-mix(in srgb, var(--sc) 26%, var(--surface-2)); box-shadow: 0 0 0 1px var(--sc) inset; }
+.cal.focus .cal-d { opacity: .55; }
+.cal.focus .cal-d.has { opacity: 1; border-color: var(--fc, var(--accent)); }
+.cal.focus .cal-d.today { opacity: 1; }
+.mine { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; font-size: 14px; }
+.mine-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.mine-days span { padding: 4px 9px; border-radius: 999px; background: var(--surface-2); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mine-days span.done { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+.mine-days span.now { background: var(--accent-grad); color: var(--accent-ink); }
 .sched-ed .ava { width: 26px; height: 26px; border-radius: 7px; }
 .sched-ed span { color: var(--muted); font-size: 12px; }
 .upcoming { display: grid; gap: 6px; }
@@ -941,6 +955,8 @@ function drawWeek() {
 
 /* ---------- расписание ---------- */
 const SHIFT_ICON = { day: "☀", evening: "🌙" };
+let SCHED_FOCUS = null;               // чьи смены подсвечены (подпись редактора или ник из таблицы)
+try { SCHED_FOCUS = localStorage.getItem("gabestats-sched-focus"); } catch (_) {}
 function schedMonths() { return (DB.schedule && DB.schedule.months) || []; }
 function planOf(day, slot) {
   for (const m of schedMonths()) if (m.days[day]) return m.days[day][slot] || null;
@@ -967,7 +983,8 @@ function slotHTML(day, shift, isPast) {
     note = fact === pl.editor ? `<small class="ok">${SHIFT_ICON[shift.key]} ✓ отработал</small>`
       : fact ? `<small class="off">${SHIFT_ICON[shift.key]} фактически ${esc(ED[fact].name)}</small>` : `<small>${SHIFT_ICON[shift.key]} ${shift.name}</small>`;
   } else note = `<small>${note}</small>`;
-  return `<div class="slot ${e ? "" : "gone"}" style="--sc:${e ? COLORS[e.key] : "var(--faint)"}" title="${shift.name} ${shift.time}">
+  const hit = SCHED_FOCUS && (pl.editor || pl.label) === SCHED_FOCUS;
+  return `<div class="slot ${e ? "" : "gone"} ${hit ? "hit" : ""}" style="--sc:${e ? COLORS[e.key] : "var(--faint)"}" title="${shift.name} ${shift.time}">
     ${e ? ava(e) : `<span class="ava"></span>`}<span><b>${esc(e ? e.name : pl.label)}</b>${note}</span></div>`;
 }
 function pageSchedule() {
@@ -983,15 +1000,30 @@ function pageSchedule() {
   const tally = {};
   Object.values(m.days).forEach(d => shifts.forEach(sh => { const pl = d[sh.key]; if (!pl) return;
     const k = pl.editor || pl.label; (tally[k] = tally[k] || { day: 0, evening: 0, label: pl.label })[sh.key]++; }));
+  if (SCHED_FOCUS && !tally[SCHED_FOCUS]) SCHED_FOCUS = null;
   const legend = Object.entries(tally).sort((a, b) => (b[1].day + b[1].evening) - (a[1].day + a[1].evening)).map(([k, t]) => {
     const e = ED[k];
-    return `<span class="sched-ed" style="--sc:${e ? COLORS[k] : "var(--faint)"}">${e ? ava(e) : ""}<b>${esc(e ? e.name : t.label)}</b>
-      <span>${t.day + t.evening} ${plural(t.day + t.evening, "смена", "смены", "смен")} · ☀ ${t.day} · 🌙 ${t.evening}</span></span>`; }).join("");
+    return `<button type="button" class="sched-ed" data-focus="${esc(k)}" aria-pressed="${SCHED_FOCUS === k}" style="--sc:${e ? COLORS[k] : "var(--faint)"}">${e ? ava(e) : ""}<b>${esc(e ? e.name : t.label)}</b>
+      <span>${t.day + t.evening} ${plural(t.day + t.evening, "смена", "смены", "смен")} · ☀ ${t.day} · 🌙 ${t.evening}</span></button>`; }).join("")
+    + (SCHED_FOCUS ? `<button type="button" class="chip" data-focus="">Показать всех</button>` : "");
+  // список смен выбранного редактора — коротко, чтобы не искать по календарю
+  let mine = "";
+  if (SCHED_FOCUS) {
+    const list = [];
+    for (let i = 0; i < daysIn; i++) { const d = numDay(dayNum(first) + i);
+      shifts.forEach(sh => { const pl = m.days[d] && m.days[d][sh.key];
+        if (pl && (pl.editor || pl.label) === SCHED_FOCUS) list.push({ d, sh, n: dayNum(d) }); }); }
+    const next = list.find(x => x.n >= today);
+    const who = ED[SCHED_FOCUS] ? ED[SCHED_FOCUS].name : SCHED_FOCUS;
+    mine = `<div class="mine"><div><b>Смены ${esc(who)} в этом месяце: ${list.length}</b>${next ? ` · ближайшая — ${next.n === today ? "сегодня" : `${DOW[dow(next.d)]}, ${dmy(next.d)}`}, ${SHIFT_ICON[next.sh.key]} ${next.sh.name.toLowerCase()} ${next.sh.time}` : " · в этом месяце больше нет"}</div>
+      <div class="mine-days">${list.map(x => `<span class="${x.n < today ? "done" : x.n === today ? "now" : ""}">${+x.d.slice(8)} ${SHIFT_ICON[x.sh.key]}</span>`).join("")}</div></div>`;
+  }
   let cells = DOW.map(d => `<div class="cal-h">${d}</div>`).join("");
   for (let i = 0; i < dow(first); i++) cells += `<div class="cal-d pad"></div>`;
   for (let i = 0; i < daysIn; i++) {
     const n = dayNum(first) + i, d = numDay(n), isToday = n === today, isPast = n < today;
-    cells += `<div class="cal-d ${isToday ? "today" : isPast ? "past" : ""}">
+    const has = SCHED_FOCUS && shifts.some(sh => { const pl = m.days[d] && m.days[d][sh.key]; return pl && (pl.editor || pl.label) === SCHED_FOCUS; });
+    cells += `<div class="cal-d ${isToday ? "today" : isPast ? "past" : ""} ${has ? "has" : ""}">
       <div class="cal-num"><span>${i + 1}</span><span class="wd">${DOW[dow(d)]}</span>${isToday ? "<small>сегодня</small>" : ""}</div>
       ${shifts.map(sh => slotHTML(d, sh, isPast)).join("")}</div>`;
   }
@@ -1001,14 +1033,23 @@ function pageSchedule() {
         <div><h1>Расписание <em>смен</em></h1>
         <p class="lead">${shifts.map(sh => `${SHIFT_ICON[sh.key]} ${sh.name} ${sh.time}`).join(" · ")} · по МСК. Берётся из Google Таблицы «Gabe News | INFO» при каждом обновлении сайта.</p></div>
       </div>
-      <div class="sched-legend">${legend}</div>
+      <div style="display:grid;gap:8px"><span class="note">Нажмите на себя, чтобы подсветить только свои смены.</span>
+        <div class="sched-legend" role="group" aria-label="Подсветить смены редактора">${legend}</div></div>
+      ${mine}
     </section>
     <section class="section">
       <div class="section-head"><h2>${m.title}</h2><p>У прошедших смен отметка: ✓ — смену вёл тот, кто стоял в расписании; «фактически …» — больше всех постов в это время было у другого редактора.</p></div>
-      <div class="card"><div class="cal">${cells}</div></div>
+      <div class="card"><div class="cal ${SCHED_FOCUS ? "focus" : ""}" style="${SCHED_FOCUS && ED[SCHED_FOCUS] ? `--fc:${COLORS[SCHED_FOCUS]}` : ""}">${cells}</div></div>
     </section>`);
 }
-function drawSchedule() {}
+function drawSchedule() {
+  document.querySelectorAll("[data-focus]").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.focus || null;
+    SCHED_FOCUS = SCHED_FOCUS === k ? null : k;
+    try { SCHED_FOCUS ? localStorage.setItem("gabestats-sched-focus", SCHED_FOCUS) : localStorage.removeItem("gabestats-sched-focus"); } catch (_) {}
+    render(true);
+  }));
+}
 function upcomingHTML(e) {
   const out = [], today = dayNum(TODAY);
   for (let n = today; n < today + 14 && out.length < 6; n++) {
