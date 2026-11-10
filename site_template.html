@@ -1,0 +1,1010 @@
+<title>Статистика Gabe News</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="__FACE__">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: тёмная редакционная панель Gabe News — жёлтый как сигнальный цвет бренда,
+   одна колонка карточек-разделов, таблицы и тепловые карты в собственных скролл-контейнерах. */
+:root {
+  color-scheme: dark;
+  --bg: #121110;
+  --surface: #1b1a17;
+  --surface-2: #24221d;
+  --line: #322f27;
+  --fg: #f4f1e8;
+  --muted: #a7a194;
+  --faint: #6f695c;
+  --accent: #f5dc0d;
+  --accent-grad: linear-gradient(135deg, #f3f201 0%, #f5dc0d 45%, #f5c818 100%);
+  --accent-ink: #141100;
+  --accent-text: #f5dc0d;
+  --accent-soft: rgba(245, 220, 13, .14);
+  --mark: #f5dc0d;
+  --good: #3fbf5f;
+  --bad: #e86060;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --heat-0: #24221d; --heat-1: #4a4210; --heat-2: #7d6e12; --heat-3: #b9a10f; --heat-4: #f5e60a;
+  --font-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #f6f3ea; --surface: #fffdf7; --surface-2: #f0ece0; --line: #e2ddcf;
+    --fg: #1c1a15; --muted: #6a6457; --faint: #9c9585;
+    --accent: #f5dc0d; --accent-ink: #141100; --accent-text: #7a6400; --accent-soft: rgba(245, 210, 13, .22); --mark: #1c1a15;
+    --good: #1b8a3a; --bad: #c43c3c;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --heat-0: #ece7d9; --heat-1: #f7ef9c; --heat-2: #f3e04a; --heat-3: #e2c40c; --heat-4: #a88a00;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f3ea; --surface: #fffdf7; --surface-2: #f0ece0; --line: #e2ddcf;
+  --fg: #1c1a15; --muted: #6a6457; --faint: #9c9585;
+  --accent: #f5dc0d; --accent-ink: #141100; --accent-text: #7a6400; --accent-soft: rgba(245, 210, 13, .22); --mark: #1c1a15;
+  --good: #1b8a3a; --bad: #c43c3c;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --heat-0: #ece7d9; --heat-1: #f7ef9c; --heat-2: #f3e04a; --heat-3: #e2c40c; --heat-4: #a88a00;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Шапка */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 20px; padding-block: 12px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-mark { width: 38px; height: 38px; border-radius: 11px; display: block; flex: none; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.logo-name { font: 800 17px/1 var(--font-display); letter-spacing: .02em; }
+.logo-name b { color: var(--accent-text); font-weight: 800; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { padding: 8px 14px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 700; font-size: 14px; }
+.tab:hover { color: var(--fg); background: var(--surface-2); }
+.tab[aria-current="page"] { background: var(--accent-grad); color: var(--accent-ink); }
+.top .spacer { flex: 1; }
+.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-left: 4px; vertical-align: 2px; box-shadow: 0 0 0 0 var(--bad); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 60%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.daytable td.today, .daytable th.today { background: var(--accent-soft); }
+.daytable td.future { color: var(--faint); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); }
+.stamp { color: var(--faint); font-size: 12px; }
+
+main { padding-block: 28px 64px; }
+h1 { font: 800 clamp(26px, 4.4vw, 40px)/1.1 var(--font-display); margin: 0 0 8px; text-wrap: balance; letter-spacing: -.01em; }
+h1 em, h2 em { font-style: normal; color: var(--accent-text); }
+h2 { font: 700 20px/1.2 var(--font-display); margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0; max-width: 68ch; }
+.section { margin-top: 36px; display: grid; gap: 14px; }
+.section-head { display: grid; gap: 4px; }
+.section-head p { color: var(--muted); margin: 0; font-size: 14px; max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+
+/* Чипы и переключатели */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface-2); padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.chip:hover { color: var(--fg); }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Главный блок */
+.hero { position: relative; overflow: hidden; isolation: isolate; background: linear-gradient(160deg, var(--surface) 0%, var(--surface-2) 100%); border: 1px solid var(--line); border-radius: 22px; padding: clamp(18px, 3vw, 30px); display: grid; gap: 18px; }
+.hero::after { content: ""; position: absolute; z-index: -1; right: -36px; top: -44px; width: 300px; height: 300px; background: var(--mark); opacity: .09; pointer-events: none;
+  -webkit-mask: url(__MASK__) center / contain no-repeat; mask: url(__MASK__) center / contain no-repeat; }
+@media (max-width: 560px) { .hero::after { width: 200px; height: 200px; right: -50px; top: -30px; } }
+.hero-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.kpi { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 8px; display: grid; gap: 2px; min-width: 0; }
+.kpi-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.kpi-val { font: 800 26px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.kpi-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.delta { font-size: 12px; font-weight: 800; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.delta.up { color: var(--good); background: color-mix(in srgb, var(--good) 16%, transparent); }
+.delta.down { color: var(--bad); background: color-mix(in srgb, var(--bad) 16%, transparent); }
+.delta.flat { color: var(--muted); background: var(--surface-2); }
+.spark { width: 100%; height: 30px; display: block; }
+
+/* Графики */
+.chart-box { position: relative; height: 340px; }
+.chart-box.small { height: 220px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend i.dash { height: 2px; width: 14px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px); }
+.chart-toolbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.note { font-size: 12px; color: var(--faint); }
+
+/* Аватары */
+.ava { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; flex: none; background: var(--surface-2); }
+.ava.lg { width: 84px; height: 84px; border-radius: 22px; }
+.ava.sm { width: 22px; height: 22px; border-radius: 6px; }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who b { display: block; font-weight: 800; }
+.who small { display: block; color: var(--muted); font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+/* Таблица рейтинга */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: right; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 800; padding: 8px 10px; white-space: nowrap; }
+th:first-child, th:nth-child(2) { text-align: left; }
+td { padding: 10px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+td:first-child, td:nth-child(2) { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--surface-2); }
+.rank { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; background: var(--surface-2); color: var(--muted); }
+.rank.r1 { background: var(--accent-grad); color: var(--accent-ink); }
+td small { display: block; color: var(--faint); font-size: 11px; }
+.big { font-weight: 800; font-size: 16px; }
+
+/* Тепловые карты */
+.heat-cal { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 22px); grid-auto-columns: 22px; gap: 5px; width: max-content; }
+.heat-cal .c, .heat-week .c { border-radius: 4px; background: var(--heat-0); }
+.heat-wrap { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: start; }
+.heat-days { display: grid; grid-template-rows: repeat(7, 22px); gap: 5px; font-size: 11px; color: var(--muted); line-height: 22px; }
+.heat-months { display: grid; grid-auto-flow: column; grid-auto-columns: 22px; gap: 5px; font-size: 11px; color: var(--muted); height: 16px; white-space: nowrap; }
+.heat-week { display: grid; grid-template-columns: 28px repeat(24, minmax(18px, 1fr)); gap: 4px; min-width: 640px; font-size: 11px; color: var(--muted); }
+.heat-week .c { height: 22px; }
+.heat-week .h { text-align: center; }
+.scale { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.scale .c { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+.c[data-tip] { cursor: default; }
+.c:hover { outline: 2px solid var(--fg); outline-offset: -1px; }
+
+/* Посты */
+.posts { display: grid; gap: 8px; }
+.post { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; min-width: 0; }
+.post:hover { border-color: var(--accent); }
+.post .pos { font: 800 16px/1 var(--font-display); color: var(--faint); width: 26px; text-align: center; }
+.post .ttl { min-width: 0; }
+.post .ttl b { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.post .ttl small { color: var(--muted); font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.post .fw { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.post .fw small { display: block; color: var(--muted); font-weight: 600; font-size: 11px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+.cols.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.reacts { display: grid; gap: 8px; }
+.react { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.react .e { font-size: 18px; text-align: center; }
+.bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+
+/* Рекорды */
+.records { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.record { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.record .v { font: 800 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.record p { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.record a { color: var(--accent-text); }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; }
+.badge b { font-weight: 800; }
+.badge span { color: var(--muted); }
+
+/* Темы */
+.topics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.topic { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.topic-top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; }
+.topic small { color: var(--muted); font-size: 12px; }
+
+/* Дуэль */
+.duel-pick { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+select { font: inherit; font-weight: 700; color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
+.vs { font: 800 14px/1 var(--font-display); color: var(--accent-text); }
+.duel { display: grid; gap: 10px; }
+.duel-row { display: grid; grid-template-columns: 1fr minmax(110px, auto) 1fr; gap: 12px; align-items: center; font-variant-numeric: tabular-nums; }
+.duel-row .l, .duel-row .r { display: grid; gap: 4px; }
+.duel-row .l { text-align: right; }
+.duel-row .m { text-align: center; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.duel-row b { font-weight: 800; font-size: 16px; }
+.duel-row .win b { color: var(--accent-text); }
+.duel-head { display: grid; grid-template-columns: 1fr minmax(110px, auto) 1fr; gap: 12px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+@media (max-width: 560px) { .duel-head { grid-template-columns: 1fr 84px 1fr; gap: 8px; } }
+.duel-bar { height: 6px; border-radius: 3px; background: var(--surface-2); display: flex; }
+.duel-row .l .duel-bar { justify-content: flex-end; }
+.duel-bar i { display: block; height: 100%; border-radius: 3px; }
+
+/* Состав */
+.group-title { display: flex; align-items: baseline; gap: 10px; border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+.group-title h2 { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; }
+.group-title span { color: var(--muted); font-size: 13px; }
+.members { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.member { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); text-decoration: none; }
+.member:hover { border-color: var(--accent); }
+.member .ava { width: 52px; height: 52px; border-radius: 14px; }
+.member .info { flex: 1; min-width: 0; }
+.member .info b { display: block; font-weight: 800; font-size: 16px; }
+.member .info small { color: var(--muted); }
+.member .count { color: var(--muted); font-size: 13px; text-align: right; white-space: nowrap; }
+.member .count b { display: block; color: var(--fg); font-size: 18px; font-variant-numeric: tabular-nums; }
+
+/* Профиль */
+.back { color: var(--muted); text-decoration: none; font-weight: 700; font-size: 14px; }
+.back:hover { color: var(--fg); }
+.profile-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.profile-head h1 { margin: 0; }
+.profile-head .sub { color: var(--muted); }
+.feed-more { justify-self: center; }
+.btn { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 9px 16px; font-weight: 800; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent-grad); border-color: transparent; color: var(--accent-ink); }
+
+/* Подсказка */
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--fg); color: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; max-width: 260px; opacity: 0; transition: opacity .1s; }
+
+/* Экран пароля */
+.lock { min-height: 100vh; display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+.lock-card { width: min(400px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; gap: 16px; }
+.lock-card h1 { font-size: 24px; }
+.lock-logo { width: 96px; height: 96px; border-radius: 22px; display: block; }
+.lock-card label { font-weight: 700; font-size: 13px; color: var(--muted); }
+.lock-card input[type="password"] { font: inherit; font-size: 16px; width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.lock-card .row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.lock-card .err { color: var(--bad); font-size: 13px; min-height: 1.2em; margin: 0; }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .records, .topics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols, .cols.even { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis .kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .members { grid-template-columns: minmax(0, 1fr); }
+  .records, .topics { grid-template-columns: minmax(0, 1fr); }
+  .chart-box { height: 280px; }
+  .duel-row { grid-template-columns: 1fr 84px 1fr; gap: 8px; }
+  .stamp { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div id="app"></div>
+<div id="tip" role="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+"use strict";
+let VAULT = /*__VAULT__*/null;
+let PASS = null;                      // пароль хранится только в памяти вкладки — чтобы подхватывать обновления
+const POLL_MIN = 5;                   // как часто страница проверяет, не вышла ли новая версия данных
+const STORE_KEY = "gabestats-pass";
+let DB = null;
+const charts = [];
+
+/* ---------- утилиты ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = n => Math.round(n).toLocaleString("ru-RU");
+const short = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + "M"
+  : n >= 1e4 ? Math.round(n / 1e3) + "K" : n >= 1e3 ? (n / 1e3).toFixed(1).replace(".", ",") + "K" : String(Math.round(n));
+const kf = (fw, n) => n ? Math.floor(fw / n + 1e-9) : 0;           // КФ — всегда целое, дробь отбрасывается
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const plural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? few : many;
+};
+const MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+const DOW = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const dayNum = s => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+const numDay = n => new Date(n * 864e5).toISOString().slice(0, 10);
+const dmy = s => { const [, m, d] = s.slice(0, 10).split("-"); return `${+d} ${MONTHS[+m - 1]}`; };
+const dm = s => { const [, m, d] = s.slice(0, 10).split("-"); return `${d}.${m}`; };
+const dow = s => (new Date(dayNum(s) * 864e5).getUTCDay() + 6) % 7;   // 0 = понедельник
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const link = id => `https://t.me/${DB.channel}/${id}`;
+
+/* ---------- расшифровка ---------- */
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function unlock(password) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(VAULT.salt), iterations: VAULT.rounds, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(VAULT.iv) }, key, b64(VAULT.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+function lockScreen(message = "") {
+  $("#app").innerHTML = `
+    <div class="lock"><form class="lock-card" id="lock-form" autocomplete="on">
+      <img class="lock-logo" src="__LOGO__" alt="Gabe News">
+      <div><h1>Статистика редакции</h1><p class="lead">Сайт закрыт. Введите пароль, который вам выдали.</p></div>
+      <div style="display:grid;gap:6px"><label for="pw">Пароль</label>
+        <input id="pw" name="password" type="password" autocomplete="current-password" required></div>
+      <label class="row" for="remember"><input id="remember" type="checkbox" checked> Запомнить на этом устройстве</label>
+      <p class="err" id="lock-err">${esc(message)}</p>
+      <button class="btn primary" type="submit" id="lock-go">Открыть статистику</button>
+    </form></div>`;
+  $("#pw").focus();
+  $("#lock-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pw = $("#pw").value, btn = $("#lock-go");
+    btn.disabled = true; btn.textContent = "Проверяю…";
+    try {
+      DB = await unlock(pw); PASS = pw;
+      try { if ($("#remember").checked) localStorage.setItem(STORE_KEY, pw); } catch (_) {}
+      start();
+    } catch (_) {
+      btn.disabled = false; btn.textContent = "Открыть статистику";
+      $("#lock-err").textContent = "Неверный пароль. Проверьте раскладку и попробуйте ещё раз.";
+    }
+  });
+}
+
+/* ---------- данные ---------- */
+let ED = {}, BYSLUG = {}, TODAY = "", COLORS = {}, LASTDAY = 0, DONE = [];
+function prepare() {
+  DB.editors.forEach((e, i) => { e.i = i; ED[e.key] = e; BYSLUG[e.slug] = e; });
+  TODAY = DB.exported.slice(0, 10);
+  // Неделя пн–вс. Идущая неделя не учитывается нигде, пока по ней нет отчёта.
+  // Завершённая неделя без отчёта (например, компьютер был выключен в понедельник) считается по текущим данным.
+  DONE = DB.weeks.filter(w => w.official || dayNum(w.end) < dayNum(TODAY));
+  LASTDAY = DONE.length ? dayNum(DONE[DONE.length - 1].end) : dayNum(TODAY);
+  DB.counted = DB.posts.filter(p => p.k === "post" && dayNum(p.d) <= LASTDAY);
+  DB.liveWeek = DB.weeks.find(w => dayNum(w.start) <= dayNum(TODAY) && dayNum(TODAY) <= dayNum(w.end) && !w.official) || null;
+  DB.live = DB.liveWeek ? DB.posts.filter(p => p.k === "post" && dayNum(p.d) >= dayNum(DB.liveWeek.start)) : [];
+  DB.liveShifts = DB.liveWeek ? DB.shifts.filter(x => dayNum(x.start) >= dayNum(DB.liveWeek.start)) : [];
+  DB.shifts = DB.shifts.filter(x => dayNum(x.start) <= LASTDAY);
+}
+function seriesColors() { DB.editors.forEach((e, i) => COLORS[e.key] = css(`--s${i + 1}`)); }
+function weekRange(w) { return { from: dayNum(w.start), to: dayNum(w.end), week: w }; }
+function range(period) {
+  if (period === "all") return { from: dayNum(DB.firstDay), to: LASTDAY, prev: null, label: "всё время" };
+  const i = DONE.findIndex(w => w.start === period), w = DONE[i] || DONE[DONE.length - 1];
+  const r = weekRange(w);
+  r.prev = i > 0 ? weekRange(DONE[i - 1]) : null;
+  r.label = `неделю ${dm(w.start)}–${dm(w.end)}`;
+  return r;
+}
+const inRange = (s, r) => { const n = dayNum(s); return n >= r.from && n <= r.to; };
+function agg(r) {
+  const posts = DB.counted.filter(p => inRange(p.d, r));
+  const shifts = DB.shifts.filter(x => inRange(x.start, r));
+  const by = {};
+  DB.editors.forEach(e => by[e.key] = { posts: 0, fw: 0, v: 0, r: 0, video: 0, night: 0, shifts: 0, items: [] });
+  posts.forEach(p => p.e.forEach(k => {
+    const b = by[k]; if (!b) return;
+    b.posts++; b.fw += p.fw; b.v += p.v; b.r += p.r; b.items.push(p);
+    if (p.m.includes("video")) b.video++;
+    const h = +p.d.slice(11, 13); if (h < 6) b.night++;
+  }));
+  shifts.forEach(x => by[x.e] && by[x.e].shifts++);
+  const fw = posts.reduce((a, p) => a + p.fw, 0), v = posts.reduce((a, p) => a + p.v, 0);
+  const total = { posts: posts.length, fw, v, kf: kf(fw, posts.length), shifts: shifts.length };
+  const off = r.week && r.week.official;
+  if (off) {          // посты, репосты и КФ недели — из отчёта, отправленного в Telegram
+    DB.editors.forEach(e => { const o = off.editors[e.key];
+      by[e.key].posts = o ? o.posts : 0; by[e.key].fw = o ? o.reposts : 0; by[e.key].kfOff = o ? o.coef : 0; });
+    if (off.total) { total.posts = off.total.posts; total.fw = off.total.fw; }
+    total.kf = Math.floor(off.week_coef + 1e-9);
+  }
+  total.editors = DB.editors.filter(e => by[e.key].posts).length;
+  return { posts, by, total, official: !!off };
+}
+const edKf = b => b.kfOff != null ? Math.floor(b.kfOff + 1e-9) : kf(b.fw, b.posts);
+function weekKey(s) { const n = dayNum(s); return numDay(n - dow(s)); }
+// На недельных графиках — только завершённые недели с отчётом: начатая неделя искажает картину (1 пост = весь КФ).
+const doneWeeks = live => DONE.filter(w => live[w.start]);
+function weeklyLive() {
+  const map = {};
+  DB.weeks.forEach(w => map[w.start] = { posts: {}, fw: {}, shifts: {}, all: 0, allFw: 0 });
+  DB.counted.forEach(p => {
+    const w = map[weekKey(p.d)]; if (!w) return;
+    w.all++; w.allFw += p.fw;
+    p.e.forEach(k => { w.posts[k] = (w.posts[k] || 0) + 1; w.fw[k] = (w.fw[k] || 0) + p.fw; });
+  });
+  DB.shifts.forEach(x => { const w = map[weekKey(x.start)]; if (w) w.shifts[x.e] = (w.shifts[x.e] || 0) + 1; });
+  return map;
+}
+function weekCoef(w, live, key) {           // официальный КФ недели (из отчёта) или по текущим данным
+  if (w.official && w.official.editors[key]) return Math.floor(w.official.editors[key].coef + 1e-9);
+  if (w.official) return null;
+  const n = live.posts[key] || 0; return n ? kf(live.fw[key], n) : null;
+}
+function channelCoef(w, live) {
+  if (w.official) return Math.floor(w.official.week_coef + 1e-9);
+  return live.all ? kf(live.allFw, live.all) : null;
+}
+function daily(r, fn) {
+  const out = []; for (let n = r.from; n <= r.to; n++) out.push(0);
+  DB.counted.forEach(p => { const n = dayNum(p.d); if (n >= r.from && n <= r.to) out[n - r.from] += fn(p); });
+  return out;
+}
+
+/* ---------- мелкие элементы ---------- */
+const ava = (e, cls = "") => e && e.avatar ? `<img class="ava ${cls}" src="${e.avatar}" alt="">` : `<span class="ava ${cls}"></span>`;
+const avas = keys => keys.map(k => ava(ED[k], "sm")).join("");
+const names = keys => keys.map(k => esc(ED[k].name)).join(" + ");
+function delta(cur, prev) {
+  if (prev == null || !isFinite(prev)) return "";
+  if (!prev) return cur ? `<span class="delta up">новое</span>` : "";
+  const d = Math.round((cur - prev) / prev * 100);
+  return `<span class="delta ${d > 0 ? "up" : d < 0 ? "down" : "flat"}">${d > 0 ? "+" : ""}${d}%</span>`;
+}
+function sparkSVG(values, color, h = 30) {
+  if (!values.length) return "";
+  const w = 120, max = Math.max(...values, 1), step = values.length > 1 ? w / (values.length - 1) : w;
+  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(h - 3 - (v / max) * (h - 6)).toFixed(1)}`);
+  const last = pts[pts.length - 1].split(",");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <polygon points="0,${h} ${pts.join(" ")} ${w},${h}" fill="${color}" fill-opacity=".14"></polygon>
+    <polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.5" fill="${color}"></circle></svg>`;
+}
+function postRow(p, i, extra = "") {
+  return `<a class="post" href="${link(p.id)}" target="_blank" rel="noopener">
+    <span class="pos">${i}</span>
+    <span class="ttl"><b>${esc(p.t)}</b><small>${avas(p.e)} ${names(p.e)} · ${dmy(p.d)} · ${short(p.v)} просмотров${extra}</small></span>
+    <span class="fw">${fmt(p.fw)}<small>репостов</small></span></a>`;
+}
+function tipOn(root) {
+  const tip = $("#tip");
+  root.addEventListener("pointerover", e => {
+    const c = e.target.closest("[data-tip]"); if (!c) return;
+    tip.innerHTML = c.dataset.tip; tip.style.opacity = 1;
+  });
+  root.addEventListener("pointermove", e => {
+    const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8);
+    tip.style.left = x + "px"; tip.style.top = (e.clientY + 16) + "px";
+  });
+  root.addEventListener("pointerout", e => { if (e.target.closest("[data-tip]")) tip.style.opacity = 0; });
+}
+
+/* ---------- графики (Chart.js) ---------- */
+function killCharts() { while (charts.length) charts.pop().destroy(); }
+function baseOptions() {
+  const grid = css("--line"), muted = css("--muted");
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { display: false },
+      tooltip: { backgroundColor: css("--fg"), titleColor: css("--bg"), bodyColor: css("--bg"), padding: 10,
+        cornerRadius: 8, boxPadding: 4, usePointStyle: true, titleFont: { family: "Manrope", weight: "800" },
+        bodyFont: { family: "Manrope", weight: "600" } } },
+    scales: {
+      x: { grid: { display: false }, border: { color: grid }, ticks: { color: muted, font: { family: "Manrope", size: 11 } } },
+      y: { beginAtZero: true, grid: { color: grid }, border: { display: false },
+        ticks: { color: muted, font: { family: "Manrope", size: 11 }, precision: 0 } },
+    },
+  };
+}
+const endLabels = {                     // подписи у концов линий — чтобы различать редакторов не только по цвету
+  id: "endLabels",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart; ctx.save();
+    ctx.font = "700 11px Manrope, sans-serif"; ctx.fillStyle = css("--fg"); ctx.textBaseline = "middle";
+    const used = [];
+    chart.data.datasets.forEach((ds, i) => {
+      if (!ds.endLabel) return;
+      const meta = chart.getDatasetMeta(i); if (meta.hidden) return;
+      let j = ds.data.length - 1; while (j >= 0 && ds.data[j] == null) j--;
+      if (j < 0) return;
+      const pt = meta.data[j]; let y = pt.y;
+      used.forEach(u => { if (Math.abs(u - y) < 13) y = u + (y >= u ? 13 : -13); });
+      used.push(y);
+      ctx.fillText(ds.endLabel, pt.x + 8, y);
+    });
+    ctx.restore();
+  },
+};
+function lineChart(canvas, labels, sets, opts = {}) {
+  const o = baseOptions();
+  o.layout = { padding: { right: opts.labelRoom || 70 } };
+  if (opts.suffix) o.plugins.tooltip.callbacks = { label: c => ` ${c.dataset.label}: ${c.parsed.y == null ? "—" : fmt(c.parsed.y)}${opts.suffix}` };
+  const ch = new Chart(canvas, { type: "line", data: { labels, datasets: sets.map(s => ({
+    label: s.label, data: s.data, borderColor: s.color, backgroundColor: s.color, endLabel: s.endLabel,
+    borderWidth: 2, pointRadius: 3.5, pointHoverRadius: 6, pointBackgroundColor: s.color,
+    pointBorderColor: css("--surface"), pointBorderWidth: 2, tension: .25, spanGaps: true,
+    borderDash: s.dash ? [5, 4] : [] })) }, options: o, plugins: [endLabels] });
+  charts.push(ch); return ch;
+}
+function barChart(canvas, labels, sets, opts = {}) {
+  const o = baseOptions();
+  o.scales.x.stacked = o.scales.y.stacked = !!opts.stacked;
+  if (opts.maxTicks) o.scales.x.ticks.maxTicksLimit = opts.maxTicks;
+  const surface = css("--surface");
+  const ch = new Chart(canvas, { type: "bar", data: { labels, datasets: sets.map(s => ({
+    label: s.label, data: s.data, backgroundColor: s.color, borderColor: surface, borderWidth: opts.stacked ? { top: 2 } : 0,
+    borderRadius: 4, borderSkipped: "bottom", maxBarThickness: 26 })) }, options: o });
+  charts.push(ch); return ch;
+}
+
+/* ---------- страницы ---------- */
+let PERIOD = null;
+try { PERIOD = localStorage.getItem("gabestats-week"); } catch (_) {}
+let WEEK_METRIC = "kf";
+
+function shell(active, body) {
+  return `<header class="top"><div class="wrap">
+      <a class="logo" href="#stats"><img class="logo-mark" src="__FACE__" alt=""><span class="logo-name">GABE <b>NEWS</b></span></a>
+      <nav class="tabs" aria-label="Разделы">
+        <a class="tab" href="#stats" ${active === "stats" ? 'aria-current="page"' : ""}>Статистика</a>
+        <a class="tab" href="#week" ${active === "week" ? 'aria-current="page"' : ""}>Текущая неделя${DB.liveWeek ? ' <span class="live-dot" aria-hidden="true"></span>' : ""}</a>
+        <a class="tab" href="#team" ${active === "team" ? 'aria-current="page"' : ""}>Состав</a>
+      </nav><span class="spacer"></span>
+      <span class="stamp">учтено по ${dmy(numDay(LASTDAY))} · обновлено ${dmy(DB.exported)}</span>
+    </div></header><main class="wrap">${body}</main>`;
+}
+
+function pageTeam() {
+  const all = agg(range("all"));
+  const cards = DB.editors.map(e => `<a class="member" href="#${e.slug}">
+      ${ava(e)}<span class="info"><b>${esc(e.name)}</b><small>${esc(e.role)}</small></span>
+      <span class="count"><b>${fmt(all.by[e.key].posts)}</b>${plural(all.by[e.key].posts, "пост", "поста", "постов")}</span></a>`).join("");
+  return shell("team", `
+    <h1>Состав <em>Gabe News</em></h1>
+    <p class="lead">Редакция канала @${esc(DB.channel)}. Число постов — с ${dmy(DB.firstDay)} 2026, без рекламы и дайджестов.</p>
+    <section class="section">
+      <div class="group-title"><h2>Редакция Gabe News</h2><span>${DB.editors.length} чел.</span></div>
+      <div class="members">${cards}</div>
+    </section>`);
+}
+
+function pageStats() {
+  if (PERIOD !== "all" && !DONE.some(w => w.start === PERIOD)) PERIOD = DONE.length ? DONE[DONE.length - 1].start : "all";
+  const r = range(PERIOD), a = agg(r), p = r.prev ? agg(r.prev) : null;
+  const label = r.label;
+  const kpis = [
+    ["Постов", a.total.posts, p && p.total.posts, daily(r, () => 1)],
+    ["Репостов", a.total.fw, p && p.total.fw, daily(r, x => x.fw)],
+    ["Просмотров", a.total.v, p && p.total.v, daily(r, x => x.v)],
+    ["КФ канала", a.total.kf, p && p.total.kf, null],
+    ["Смен", a.total.shifts, p && p.total.shifts, null],
+  ];
+  const accent = css("--accent");
+  const kpiHTML = kpis.map(([name, v, pv, sp]) => `<div class="kpi">
+      <div class="kpi-top"><span class="kpi-val">${short(v)}</span>${delta(v, pv)}</div>
+      <span class="kpi-label">${name}</span>${sp ? sparkSVG(sp, accent) : `<span class="note">${name === "КФ канала" ? "репосты ÷ посты" : `по ${DB.rules.shiftMin}+ поста подряд`}</span>`}</div>`).join("");
+
+  return shell("stats", `
+    <section class="hero">
+      <div class="hero-row">
+        <div><h1>Статистика редакции <em>Gabe News</em></h1>
+        <p class="lead">${fmt(a.total.posts)} ${plural(a.total.posts, "пост", "поста", "постов")}, ${short(a.total.fw)} репостов и ${short(a.total.v)} просмотров · ${dmy(numDay(r.from))} — ${dmy(numDay(r.to))}</p></div>
+        <div class="chips" role="group" aria-label="Неделя">
+          ${[...DONE].reverse().map(w => `<button class="chip" data-period="${w.start}" aria-pressed="${PERIOD === w.start}">${dm(w.start)}–${dm(w.end)}</button>`).join("")}
+          <button class="chip" data-period="all" aria-pressed="${PERIOD === "all"}">Всё время</button>
+        </div>
+      </div>
+      <div class="kpis">${kpiHTML}</div>
+      <span class="note">${r.week ? (r.week.official ? `Неделя пн–вс. Посты, репосты и КФ — из недельного отчёта в Telegram` : `Неделя пн–вс. Отчёт по ней ещё не пришёл — цифры по текущим данным`) + `${p ? "; проценты — сравнение с предыдущей неделей" : ""}.` : `С ${dmy(DB.firstDay)} по ${dmy(numDay(LASTDAY))}, по текущим данным.`}${(() => { const c = DB.liveWeek; return c ? ` Неделя ${dm(c.start)}–${dm(c.end)} ещё идёт и пока не учитывается.` : ""; })()}</span>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Редакторы по неделям</h2>
+        <p>КФ берётся из недельных отчётов — тех же, что приходят в Telegram. Посты, репосты и смены считаются по текущим данным.</p></div>
+      <div class="card" style="display:grid;gap:12px">
+        <div class="chart-toolbar">
+          <div class="chips" role="group" aria-label="Что показать">
+            ${[["kf", "КФ"], ["posts", "Посты"], ["fw", "Репосты"], ["shifts", "Смены"]].map(([k, t]) => `<button class="chip" data-wm="${k}" aria-pressed="${WEEK_METRIC === k}">${t}</button>`).join("")}
+          </div>
+          <div class="legend">${DB.editors.map(e => `<span><i style="background:${COLORS[e.key]}"></i>${esc(e.name)}</span>`).join("")}
+            ${WEEK_METRIC === "kf" ? `<span><i class="dash"></i>весь канал</span>` : ""}</div>
+        </div>
+        <div class="chart-box"><canvas id="ch-weeks" aria-label="График по неделям"></canvas></div>
+        <span class="note" id="weeks-note"></span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Рейтинг редакторов</h2><p>За ${label}. Нажмите на заголовок столбца, чтобы отсортировать; на строку — чтобы открыть профиль. Справа — репосты по дням за последние 14 дней.</p></div>
+      <div class="card scroll" id="rating"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Пульс редакции</h2><p>Каждый квадрат — день с ${dmy(DB.firstDay)}. Чем ярче, тем больше постов. Наведите, чтобы увидеть число и редакторов дня.</p></div>
+      <div class="card scroll" id="pulse"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Поток постов</h2><p id="flow-note"></p></div>
+      <div class="card" style="display:grid;gap:12px">
+        <div class="legend">${DB.editors.map(e => `<span><i style="background:${COLORS[e.key]}"></i>${esc(e.name)}</span>`).join("")}</div>
+        <div class="chart-box small"><canvas id="ch-flow" aria-label="Посты по дням"></canvas></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Когда редакция на связи</h2><p>Дни недели по вертикали, часы МСК по горизонтали, за ${label}. Видно утренний старт, вечерний пик и ночные посты.</p></div>
+      <div class="card scroll" id="hours"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Что зашло читателям</h2><p>Посты с наибольшим числом репостов за ${label} и самые частые реакции.</p></div>
+      <div class="cols"><div class="card posts" id="top-posts"></div><div class="card" id="reacts"></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Рекорды и ачивки</h2><p>За ${label}, из тех же данных.</p></div>
+      <div class="card" style="display:grid;gap:14px"><div class="records" id="records"></div><div class="badges" id="badges"></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>О ком писали</h2><p>Команды, игроки и темы, которые чаще всего встречались в постах за ${label}.</p></div>
+      <div class="topics" id="topics"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Дуэль редакторов</h2><p>Выберите двоих — по каждому показателю за ${label} видно, кто впереди.</p></div>
+      <div class="card" style="display:grid;gap:16px">
+        <div class="duel-pick"><select id="duel-a" aria-label="Первый редактор"></select><span class="vs">VS</span><select id="duel-b" aria-label="Второй редактор"></select></div>
+        <div class="duel" id="duel"></div>
+      </div>
+    </section>`);
+}
+
+function drawStats() {
+  const r = range(PERIOD), a = agg(r);
+  document.querySelectorAll("[data-period]").forEach(b => b.addEventListener("click", () => {
+    PERIOD = b.dataset.period; try { localStorage.setItem("gabestats-week", PERIOD); } catch (_) {} render(true);
+  }));
+  document.querySelectorAll("[data-wm]").forEach(b => b.addEventListener("click", () => { WEEK_METRIC = b.dataset.wm; render(true); }));
+
+  /* недели */
+  const live = weeklyLive();
+  const weeks = doneWeeks(live);
+  const labels = weeks.map(w => `${dm(w.start)}–${dm(w.end)}`);
+  const sets = DB.editors.map(e => ({
+    label: e.name, color: COLORS[e.key], endLabel: e.name,
+    data: weeks.map(w => {
+      const l = live[w.start];
+      if (WEEK_METRIC === "kf") return weekCoef(w, l, e.key);
+      if (WEEK_METRIC === "posts") return l.posts[e.key] || 0;
+      if (WEEK_METRIC === "fw") return l.fw[e.key] || 0;
+      return l.shifts[e.key] || 0;
+    }),
+  }));
+  if (WEEK_METRIC === "kf") sets.push({ label: "Весь канал", color: css("--muted"), dash: true, data: weeks.map(w => channelCoef(w, live[w.start])) });
+  lineChart($("#ch-weeks"), labels, sets);
+  const cur = DB.liveWeek;
+  $("#weeks-note").textContent = cur ? `Неделя ${dm(cur.start)}–${dm(cur.end)} ещё идёт — появится на графике после отчёта в понедельник.` : "";
+
+  /* рейтинг */
+  const last14 = { from: r.to - 13, to: r.to };
+  let sortKey = "kf";
+  const rows = DB.editors.map(e => { const b = a.by[e.key]; return { e, b,
+    kf: edKf(b), posts: b.posts, fw: b.fw, v: b.posts ? b.v / b.posts : 0, rp: b.posts ? b.r / b.posts : 0,
+    shifts: b.shifts, ps: b.shifts ? b.posts / b.shifts : 0, form: daily(last14, x => x.e.includes(e.key) ? x.fw : 0) }; });
+  const cols = [["kf", "КФ"], ["posts", "Постов"], ["fw", "Репостов"], ["v", "Просмотры"], ["rp", "Реакц./пост"], ["shifts", "Смен"]];
+  function drawRating() {
+    const sorted = [...rows].sort((x, y) => y[sortKey] - x[sortKey]);
+    $("#rating").innerHTML = `<table><thead><tr><th></th><th>Редактор</th>
+      ${cols.map(([k, t]) => `<th><button class="chip" style="padding:4px 9px;font-size:11px" data-sort="${k}" aria-pressed="${sortKey === k}">${t}</button></th>`).join("")}
+      <th>Форма, 14 дней</th></tr></thead><tbody>
+      ${sorted.map((x, i) => `<tr data-go="${x.e.slug}">
+        <td><span class="rank ${i === 0 && x.posts ? "r1" : ""}">${i + 1}</span></td>
+        <td><div class="who">${ava(x.e)}<span><b>${esc(x.e.name)}</b><small>${esc(x.e.role)}</small></span></div></td>
+        <td><span class="big">${x.kf}</span><small>${a.official ? "из отчёта" : "репостов на пост"}</small></td>
+        <td>${fmt(x.posts)}<small>${x.ps ? x.ps.toFixed(1).replace(".", ",") + " за смену" : "—"}</small></td>
+        <td>${fmt(x.fw)}</td>
+        <td>${short(x.v)}<small>в среднем</small></td>
+        <td>${fmt(x.rp)}</td>
+        <td>${x.shifts}</td>
+        <td style="width:130px">${sparkSVG(x.form, COLORS[x.e.key], 28)}</td></tr>`).join("")}
+      </tbody></table>`;
+    $("#rating").querySelectorAll("[data-sort]").forEach(b => b.addEventListener("click", ev => { ev.stopPropagation(); sortKey = b.dataset.sort; drawRating(); }));
+    $("#rating").querySelectorAll("[data-go]").forEach(tr => tr.addEventListener("click", () => location.hash = tr.dataset.go));
+  }
+  drawRating();
+
+  /* пульс */
+  const first = dayNum(DB.firstDay), last = LASTDAY;
+  const perDay = {}, whoDay = {};
+  DB.counted.forEach(p => { const n = dayNum(p.d); perDay[n] = (perDay[n] || 0) + 1;
+    (whoDay[n] = whoDay[n] || {}); p.e.forEach(k => whoDay[n][k] = (whoDay[n][k] || 0) + 1); });
+  const maxDay = Math.max(...Object.values(perDay), 1);
+  const lvl = v => !v ? 0 : Math.min(4, 1 + Math.floor((v / maxDay) * 3.999));
+  let cells = "", months = "", lastMonth = "";
+  const startPad = dow(DB.firstDay);
+  for (let i = 0; i < startPad; i++) cells += `<span></span>`;
+  for (let n = first; n <= last; n++) {
+    const d = numDay(n), v = perDay[n] || 0;
+    const who = Object.entries(whoDay[n] || {}).sort((x, y) => y[1] - x[1]).map(([k, c]) => `${esc(ED[k].name)} ${c}`).join(", ");
+    cells += `<span class="c" style="background:var(--heat-${lvl(v)})" data-tip="<b>${dmy(d)}</b> · ${v} ${plural(v, "пост", "поста", "постов")}${who ? "<br>" + who : ""}"></span>`;
+  }
+  const weeksN = Math.ceil((last - first + 1 + startPad) / 7);
+  for (let w = 0; w < weeksN; w++) {
+    const d = numDay(first - startPad + w * 7), m = MONTHS[+d.slice(5, 7) - 1];
+    months += `<span>${m !== lastMonth ? m : ""}</span>`; lastMonth = m;
+  }
+  $("#pulse").innerHTML = `<div class="heat-wrap"><div></div><div class="heat-months">${months}</div>
+    <div class="heat-days">${DOW.map((d, i) => `<span>${i % 2 ? "" : d}</span>`).join("")}</div>
+    <div class="heat-cal">${cells}</div></div>
+    <div class="scale" style="margin-top:10px">меньше ${[0, 1, 2, 3, 4].map(i => `<span class="c" style="background:var(--heat-${i})"></span>`).join("")} больше</div>`;
+  tipOn($("#pulse"));
+
+  /* поток */
+  const days = []; for (let n = r.from; n <= r.to; n++) days.push(n);
+  const flowSets = DB.editors.map(e => ({ label: e.name, color: COLORS[e.key],
+    data: days.map(n => DB.counted.filter(p => dayNum(p.d) === n && p.e[0] === e.key).length) }));
+  barChart($("#ch-flow"), days.map(n => dm(numDay(n))), flowSets, { stacked: true, maxTicks: 12 });
+  let rec = 0, recDay = r.from; days.forEach(n => { const v = perDay[n] || 0; if (v > rec) { rec = v; recDay = n; } });
+  $("#flow-note").textContent = `Сколько постов выходило каждый день и у кого. Рекорд за период: ${dmy(numDay(recDay))} — ${rec} ${plural(rec, "пост", "поста", "постов")}. Совместный пост засчитан первому автору.`;
+
+  /* часы */
+  const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
+  a.posts.forEach(p => grid[dow(p.d)][+p.d.slice(11, 13)]++);
+  const maxH = Math.max(...grid.flat(), 1);
+  const lv = v => !v ? 0 : Math.min(4, 1 + Math.floor((v / maxH) * 3.999));
+  $("#hours").innerHTML = `<div class="heat-week"><span></span>${Array.from({ length: 24 }, (_, h) => `<span class="h">${h % 3 ? "" : h}</span>`).join("")}
+    ${grid.map((row, d) => `<span>${DOW[d]}</span>` + row.map((v, h) => `<span class="c" style="background:var(--heat-${lv(v)})" data-tip="<b>${DOW[d]}, ${String(h).padStart(2, "0")}:00–${String(h).padStart(2, "0")}:59</b><br>${v} ${plural(v, "пост", "поста", "постов")}"></span>`).join("")).join("")}</div>
+    <div class="scale" style="margin-top:10px">меньше ${[0, 1, 2, 3, 4].map(i => `<span class="c" style="background:var(--heat-${i})"></span>`).join("")} больше</div>`;
+  tipOn($("#hours"));
+
+  /* что зашло */
+  const topP = [...a.posts].sort((x, y) => y.fw - x.fw || x.id - y.id).slice(0, 6);
+  $("#top-posts").innerHTML = topP.length ? topP.map((p, i) => postRow(p, i + 1)).join("") : `<p class="note">За период постов нет.</p>`;
+  const rx = {}; a.posts.forEach(p => Object.entries(p.rx).forEach(([k, v]) => rx[k] = (rx[k] || 0) + v));
+  const rxs = Object.entries(rx).sort((x, y) => y[1] - x[1]).slice(0, 8), rmax = rxs.length ? rxs[0][1] : 1;
+  $("#reacts").innerHTML = `<div class="eyebrow" style="margin-bottom:12px">Чем реагируют чаще всего</div><div class="reacts">
+    ${rxs.map(([k, v]) => `<div class="react"><span class="e">${k === "custom" ? "✨" : esc(k)}</span><span class="bar"><i style="width:${pct(v, rmax)}%"></i></span><b>${short(v)}</b></div>`).join("")}</div>
+    <p class="note" style="margin-top:12px">✨ — кастомные и платные реакции вместе.</p>`;
+
+  /* рекорды */
+  const P = a.posts;
+  const best = (f) => P.reduce((m, p) => !m || f(p) > f(m) ? p : m, null);
+  const topFw = best(p => p.fw), topV = best(p => p.v), longest = best(p => p.len);
+  const dayCount = {}; P.forEach(p => { const d = p.d.slice(0, 10); dayCount[d] = (dayCount[d] || 0) + 1; });
+  const [busyDay, busyN] = Object.entries(dayCount).sort((x, y) => y[1] - x[1])[0] || ["", 0];
+  const busyWho = busyDay ? Object.entries(P.filter(p => p.d.startsWith(busyDay)).reduce((m, p) => (p.e.forEach(k => m[k] = (m[k] || 0) + 1), m), {})).sort((x, y) => y[1] - x[1])[0] : null;
+  const recordCard = (eyebrow, v, html) => `<div class="record"><span class="eyebrow">${eyebrow}</span><span class="v">${v}</span><p>${html}</p></div>`;
+  $("#records").innerHTML = P.length ? [
+    recordCard("Самый репостнутый пост", fmt(topFw.fw), `${names(topFw.e)} · <a href="${link(topFw.id)}" target="_blank" rel="noopener">${esc(topFw.t.slice(0, 70))}</a>`),
+    recordCard("Самый читаемый пост", short(topV.v), `${names(topV.e)} · <a href="${link(topV.id)}" target="_blank" rel="noopener">${esc(topV.t.slice(0, 70))}</a>`),
+    recordCard("Самый плотный день", `${busyN} ${plural(busyN, "пост", "поста", "постов")}`, `${dmy(busyDay)} · больше всех ${busyWho ? esc(ED[busyWho[0]].name) : "—"}`),
+    recordCard("Самый длинный пост", `${fmt(longest.len)} знаков`, `${names(longest.e)} · <a href="${link(longest.id)}" target="_blank" rel="noopener">${esc(longest.t.slice(0, 70))}</a>`),
+  ].join("") : `<p class="note">За период постов нет.</p>`;
+  const eds = DB.editors.map(e => ({ e, b: a.by[e.key] })).filter(x => x.b.posts >= 5);
+  const pick = f => eds.reduce((m, x) => !m || f(x) > f(m) ? x : m, null);
+  const badge = (icon, title, x, text) => x ? `<span class="badge">${icon} <b>${title}</b> ${ava(x.e, "sm")} <span>${esc(x.e.name)} — ${text(x)}</span></span>` : "";
+  $("#badges").innerHTML = [
+    badge("🔁", "Король репостов", pick(x => edKf(x.b)), x => `КФ ${edKf(x.b)}`),
+    badge("❤️", "Любимец читателей", pick(x => x.b.r / x.b.posts), x => `${fmt(x.b.r / x.b.posts)} реакций на пост`),
+    badge("🦉", "Ночной сторож", pick(x => x.b.night / x.b.posts), x => `${pct(x.b.night, x.b.posts)}% постов с 00 до 06`),
+    badge("🎬", "Видеограф", pick(x => x.b.video / x.b.posts), x => `${pct(x.b.video, x.b.posts)}% постов с видео`),
+    badge("⚡", "Стахановец", pick(x => x.b.shifts ? x.b.posts / x.b.shifts : 0), x => `${(x.b.posts / Math.max(x.b.shifts, 1)).toFixed(1).replace(".", ",")} поста за смену`),
+    badge("🏆", "Больше всех постов", pick(x => x.b.posts), x => `${fmt(x.b.posts)} ${plural(x.b.posts, "пост", "поста", "постов")}`),
+  ].join("");
+
+  /* темы */
+  const tc = {};
+  P.forEach(p => p.tags.forEach(t => { const x = tc[t] = tc[t] || { n: 0, fw: 0, by: {} }; x.n++; x.fw += p.fw; p.e.forEach(k => x.by[k] = (x.by[k] || 0) + 1); }));
+  const topics = Object.entries(tc).sort((x, y) => y[1].n - x[1].n).slice(0, 12);
+  $("#topics").innerHTML = topics.length ? topics.map(([t, x]) => { const w = Object.entries(x.by).sort((m, n) => n[1] - m[1])[0];
+    return `<div class="topic"><div class="topic-top"><span>${esc(t)}</span><span class="num">${x.n}</span></div>
+      <small>КФ темы ${kf(x.fw, x.n)} · чаще всех пишет ${esc(ED[w[0]].name)}</small></div>`; }).join("") : `<p class="note">Нет данных.</p>`;
+
+  /* дуэль */
+  const opts = DB.editors.map(e => `<option value="${e.key}">${esc(e.name)}</option>`).join("");
+  $("#duel-a").innerHTML = opts; $("#duel-b").innerHTML = opts;
+  $("#duel-a").value = DB.editors[0].key; $("#duel-b").value = DB.editors[1].key;
+  function drawDuel() {
+    const ka = $("#duel-a").value, kb = $("#duel-b").value, A = a.by[ka], B = a.by[kb];
+    const metrics = [
+      ["КФ", b => edKf(b), v => v], ["Постов", b => b.posts, fmt], ["Репостов", b => b.fw, fmt],
+      ["Смен", b => b.shifts, fmt], ["Постов за смену", b => b.shifts ? b.posts / b.shifts : 0, v => v.toFixed(1).replace(".", ",")],
+      ["Просмотров на пост", b => b.posts ? b.v / b.posts : 0, short], ["Реакций на пост", b => b.posts ? b.r / b.posts : 0, fmt],
+      ["С видео, %", b => pct(b.video, b.posts), v => v], ["Ночных, %", b => pct(b.night, b.posts), v => v],
+    ];
+    $("#duel").innerHTML = `<div class="duel-head"><span class="who" style="justify-content:flex-end"><b>${esc(ED[ka].name)}</b>${ava(ED[ka])}</span><span></span><span class="who">${ava(ED[kb])}<b>${esc(ED[kb].name)}</b></span></div>` +
+      metrics.map(([t, f, show]) => { const va = f(A), vb = f(B), m = Math.max(va, vb, 1e-9);
+        return `<div class="duel-row"><div class="l ${va > vb ? "win" : ""}"><b>${show(va)}</b><span class="duel-bar"><i style="width:${(va / m * 100).toFixed(1)}%;background:${COLORS[ka]}"></i></span></div>
+          <div class="m">${t}</div>
+          <div class="r ${vb > va ? "win" : ""}"><b>${show(vb)}</b><span class="duel-bar"><i style="width:${(vb / m * 100).toFixed(1)}%;background:${COLORS[kb]}"></i></span></div></div>`; }).join("");
+  }
+  $("#duel-a").addEventListener("change", drawDuel); $("#duel-b").addEventListener("change", drawDuel);
+  drawDuel();
+}
+
+function pageWeek() {
+  const w = DB.liveWeek;
+  if (!w) return shell("week", `<h1>Текущая неделя</h1><p class="lead">Сейчас все недели закрыты отчётами. Новая неделя появится здесь в понедельник.</p>`);
+  const from = dayNum(w.start), today = Math.min(dayNum(TODAY), from + 6), dayIdx = today - from;
+  const posts = DB.live, fw = posts.reduce((a, p) => a + p.fw, 0), v = posts.reduce((a, p) => a + p.v, 0);
+  // та же точка прошлой недели: посты с понедельника по тот же день недели включительно
+  const prevWeek = DONE[DONE.length - 1];
+  const prevSame = prevWeek ? DB.counted.filter(p => { const n = dayNum(p.d) - dayNum(prevWeek.start); return n >= 0 && n <= dayIdx; }) : [];
+  const pfw = prevSame.reduce((a, p) => a + p.fw, 0);
+  const tiles = [
+    ["Постов", fmt(posts.length), delta(posts.length, prevWeek ? prevSame.length : null)],
+    ["Репостов", short(fw), delta(fw, prevWeek ? pfw : null)],
+    ["КФ канала", kf(fw, posts.length), ""],
+    ["Просмотров", short(v), ""],
+    ["Смен", DB.liveShifts.length, ""],
+  ];
+  return shell("week", `
+    <section class="hero">
+      <div class="hero-row">
+        <div><h1>Текущая неделя <em>${dm(w.start)}–${dm(w.end)}</em></h1>
+        <p class="lead">Идёт ${dayIdx + 1}-й день из 7 · данные на ${dmy(DB.exported)}, ${DB.exported.slice(11, 16)} МСК</p></div>
+        <span class="pill"><span class="live-dot" style="margin:0"></span> идёт подсчёт</span>
+      </div>
+      <div class="kpis">${tiles.map(([t, val, d]) => `<div class="kpi"><div class="kpi-top"><span class="kpi-val">${val}</span>${d}</div><span class="kpi-label">${t}</span></div>`).join("")}</div>
+      <span class="note">Цифры предварительные: репосты у постов растут ещё несколько дней. Итог недели — в отчёте в понедельник, после этого неделя переходит в «Статистику».${prevWeek ? ` Проценты — сравнение с тем же днём прошлой недели (${dm(prevWeek.start)}–${dm(prevWeek.end)}).` : ""}</span>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Редакторы сейчас</h2><p>КФ на текущий момент = репосты ÷ посты с понедельника.</p></div>
+      <div class="card scroll" id="live-rating"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>По дням</h2><p>Сколько постов вышло у каждого редактора в каждый день недели. Сегодня подсвечено.</p></div>
+      <div class="card" style="display:grid;gap:12px">
+        <div class="legend">${DB.editors.map(e => `<span><i style="background:${COLORS[e.key]}"></i>${esc(e.name)}</span>`).join("")}</div>
+        <div class="chart-box small"><canvas id="ch-live"></canvas></div>
+        <div class="scroll" id="live-days"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="cols even">
+        <div style="display:grid;gap:10px"><h2>Лучшие посты недели</h2><div class="card posts" id="live-top"></div></div>
+        <div style="display:grid;gap:10px"><h2>Последние посты</h2><div class="card posts" id="live-feed"></div></div>
+      </div>
+    </section>`);
+}
+
+function drawWeek() {
+  const w = DB.liveWeek; if (!w) return;
+  const from = dayNum(w.start), today = Math.min(dayNum(TODAY), from + 6);
+  const posts = DB.live;
+  const by = {}; DB.editors.forEach(e => by[e.key] = { posts: 0, fw: 0, v: 0, days: Array(7).fill(0), shifts: 0 });
+  posts.forEach(p => p.e.forEach(k => { const b = by[k]; if (!b) return; b.posts++; b.fw += p.fw; b.v += p.v; b.days[dayNum(p.d) - from]++; }));
+  DB.liveShifts.forEach(x => by[x.e] && by[x.e].shifts++);
+  const rows = DB.editors.map(e => ({ e, b: by[e.key], kf: kf(by[e.key].fw, by[e.key].posts) })).sort((x, y) => y.kf - x.kf || y.b.posts - x.b.posts);
+  $("#live-rating").innerHTML = `<table><thead><tr><th></th><th>Редактор</th><th>КФ сейчас</th><th>Постов</th><th>Репостов</th><th>Смен</th><th>Лучший пост</th></tr></thead><tbody>
+    ${rows.map((x, i) => { const best = posts.filter(p => p.e.includes(x.e.key)).sort((a, b) => b.fw - a.fw)[0];
+      return `<tr data-go="${x.e.slug}"><td><span class="rank ${i === 0 && x.b.posts ? "r1" : ""}">${i + 1}</span></td>
+      <td><div class="who">${ava(x.e)}<span><b>${esc(x.e.name)}</b><small>${esc(x.e.role)}</small></span></div></td>
+      <td><span class="big">${x.b.posts ? x.kf : "—"}</span></td><td>${fmt(x.b.posts)}</td><td>${fmt(x.b.fw)}</td><td>${x.b.shifts}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${best ? `<a href="${link(best.id)}" target="_blank" rel="noopener" style="color:var(--accent-text)">${esc(best.t.slice(0, 40))}</a> · ${fmt(best.fw)}` : "—"}</td></tr>`; }).join("")}
+    </tbody></table>`;
+  $("#live-rating").querySelectorAll("[data-go]").forEach(tr => tr.addEventListener("click", ev => { if (!ev.target.closest("a")) location.hash = tr.dataset.go; }));
+
+  const labels = Array.from({ length: 7 }, (_, i) => `${DOW[i]} ${dm(numDay(from + i))}`);
+  barChart($("#ch-live"), labels, DB.editors.map(e => ({ label: e.name, color: COLORS[e.key],
+    data: Array.from({ length: 7 }, (_, i) => from + i > today ? null : posts.filter(p => dayNum(p.d) === from + i && p.e[0] === e.key).length) })), { stacked: true });
+
+  const cls = i => from + i === today ? "today" : from + i > today ? "future" : "";
+  $("#live-days").innerHTML = `<table class="daytable"><thead><tr><th>Редактор</th>${labels.map((l, i) => `<th class="${cls(i)}">${l}</th>`).join("")}<th>Всего</th></tr></thead><tbody>
+    ${DB.editors.map(e => `<tr><td><div class="who">${ava(e, "sm")}<b>${esc(e.name)}</b></div></td>${by[e.key].days.map((n, i) => `<td class="${cls(i)}">${from + i > today ? "" : n || "·"}</td>`).join("")}<td><b>${by[e.key].posts}</b></td></tr>`).join("")}
+    <tr><td><b>Весь канал</b></td>${Array.from({ length: 7 }, (_, i) => `<td class="${cls(i)}"><b>${from + i > today ? "" : posts.filter(p => dayNum(p.d) === from + i).length}</b></td>`).join("")}<td><b>${posts.length}</b></td></tr>
+    </tbody></table>`;
+
+  $("#live-top").innerHTML = [...posts].sort((a, b) => b.fw - a.fw || a.id - b.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
+  $("#live-feed").innerHTML = [...posts].sort((a, b) => b.id - a.id).slice(0, 8).map(p => postRow(p, "•")).join("") || `<p class="note">Постов пока нет.</p>`;
+}
+
+function pageEditor(e) {
+  const all = agg(range("all")), b = all.by[e.key];
+  const ranking = DB.editors.map(x => ({ k: x.key, v: kf(all.by[x.key].fw, all.by[x.key].posts) })).sort((x, y) => y.v - x.v);
+  const place = ranking.findIndex(x => x.k === e.key) + 1;
+  const live = weeklyLive();
+  const bestWeek = DB.weeks.filter(w => w.official && w.official.editors[e.key])
+    .reduce((m, w) => !m || w.official.editors[e.key].coef > m.official.editors[e.key].coef ? w : m, null);
+  const tiles = [
+    ["КФ за всё время", kf(b.fw, b.posts), `${place}-е место из ${DB.editors.length}`],
+    ["Постов", fmt(b.posts), `${b.shifts ? (b.posts / b.shifts).toFixed(1).replace(".", ",") : "—"} за смену`],
+    ["Репостов", short(b.fw), `${short(b.v)} просмотров`],
+    ["Смен", b.shifts, `по ${DB.rules.shiftMin}+ поста подряд`],
+    ["Лучшая неделя", bestWeek ? Math.floor(bestWeek.official.editors[e.key].coef) : "—", bestWeek ? `КФ · ${dm(bestWeek.start)}–${dm(bestWeek.end)}` : "нет отчётов"],
+  ];
+  return shell("team", `
+    <a class="back" href="#team">← Состав</a>
+    <section class="hero" style="margin-top:12px">
+      <div class="profile-head">${ava(e, "lg")}<div><h1>${esc(e.name)}</h1>
+        <div class="sub">${esc(e.role)} · Редакция Gabe News · подпись в канале «${esc(e.signature)}»</div></div></div>
+      <div class="kpis">${tiles.map(([t, v, s]) => `<div class="kpi"><span class="kpi-val">${v}</span><span class="kpi-label">${t}</span><span class="note">${s}</span></div>`).join("")}</div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>КФ по неделям</h2><p>Как в недельных отчётах в Telegram. Пунктир — весь канал за ту же неделю.</p></div>
+      <div class="card" style="display:grid;gap:12px">
+        <div class="legend"><span><i style="background:${COLORS[e.key]}"></i>${esc(e.name)}</span><span><i class="dash"></i>весь канал</span></div>
+        <div class="chart-box"><canvas id="ch-ed-kf"></canvas></div></div>
+    </section>
+
+    <section class="section">
+      <div class="cols even">
+        <div class="card" style="display:grid;gap:10px"><div class="eyebrow">Постов по неделям</div><div class="chart-box small"><canvas id="ch-ed-posts"></canvas></div></div>
+        <div class="card" style="display:grid;gap:10px"><div class="eyebrow">Смен по неделям</div><div class="chart-box small"><canvas id="ch-ed-shifts"></canvas></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="cols even">
+        <div style="display:grid;gap:10px"><h2>Лучшие посты</h2><div class="card posts" id="ed-best"></div></div>
+        <div style="display:grid;gap:10px"><h2>Не зашли</h2><div class="card posts" id="ed-worst"></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Последние посты</h2><p>Все учтённые посты редактора, новые сверху.</p></div>
+      <div class="card posts" id="ed-feed"></div>
+      <button class="btn feed-more" id="ed-more">Показать ещё</button>
+    </section>`);
+}
+
+function drawEditor(e) {
+  const live = weeklyLive(), weeks = doneWeeks(live);
+  const labels = weeks.map(w => `${dm(w.start)}–${dm(w.end)}`);
+  lineChart($("#ch-ed-kf"), labels, [
+    { label: e.name, color: COLORS[e.key], endLabel: e.name, data: weeks.map(w => weekCoef(w, live[w.start], e.key)) },
+    { label: "Весь канал", color: css("--muted"), dash: true, endLabel: "канал", data: weeks.map(w => channelCoef(w, live[w.start])) },
+  ]);
+  barChart($("#ch-ed-posts"), labels, [{ label: "Постов", color: COLORS[e.key], data: weeks.map(w => live[w.start].posts[e.key] || 0) }]);
+  barChart($("#ch-ed-shifts"), labels, [{ label: "Смен", color: COLORS[e.key], data: weeks.map(w => live[w.start].shifts[e.key] || 0) }]);
+  const mine = DB.counted.filter(p => p.e.includes(e.key));
+  $("#ed-best").innerHTML = [...mine].sort((x, y) => y.fw - x.fw || x.id - y.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
+  $("#ed-worst").innerHTML = [...mine].sort((x, y) => x.fw - y.fw || x.id - y.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
+  const feed = [...mine].sort((x, y) => y.id - x.id);
+  let shown = 0;
+  const more = () => {
+    $("#ed-feed").insertAdjacentHTML("beforeend", feed.slice(shown, shown + 15).map(p => postRow(p, "•")).join(""));
+    shown += 15; $("#ed-more").hidden = shown >= feed.length;
+  };
+  $("#ed-more").addEventListener("click", more); more();
+}
+
+/* ---------- маршруты ---------- */
+function render(keepScroll) {
+  const y = scrollY;
+  killCharts(); seriesColors();
+  const h = location.hash.slice(1);
+  const e = BYSLUG[h];
+  if (h === "team") { $("#app").innerHTML = pageTeam(); }
+  else if (h === "week") { $("#app").innerHTML = pageWeek(); drawWeek(); }
+  else if (e) { $("#app").innerHTML = pageEditor(e); drawEditor(e); }
+  else { $("#app").innerHTML = pageStats(); drawStats(); }
+  document.title = h === "team" ? "Состав Gabe News" : h === "week" ? "Текущая неделя — Gabe News" : e ? `${e.name} — статистика Gabe News` : "Статистика Gabe News";
+  scrollTo(0, keepScroll ? y : 0);
+}
+// Автообновление: сайт пересобирается на сервере, а открытая страница сама подтягивает свежую версию.
+async function poll() {
+  if (document.hidden || !PASS) return;
+  try {
+    const html = await (await fetch(location.pathname + "?t=" + Date.now(), { cache: "no-store" })).text();
+    const m = html.match(/let VAULT = (\{.*?\});/s);
+    if (!m) return;
+    const box = JSON.parse(m[1]);
+    if (box.data === VAULT.data) return;
+    VAULT = box;
+    const fresh = await unlock(PASS);
+    DB = fresh; ED = {}; BYSLUG = {}; prepare(); render(true);
+  } catch (_) { /* нет сети или файл не обновился — попробуем позже */ }
+}
+function start() {
+  prepare();
+  setInterval(poll, POLL_MIN * 60e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  addEventListener("hashchange", () => render(false));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render(true));
+  new MutationObserver(() => render(true)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  render(false);
+}
+
+(async function boot() {
+  if (!VAULT) { $("#app").innerHTML = `<div class="lock"><div class="lock-card"><h1>Нет данных</h1><p class="lead">Сайт не собран: запустите build_site.py.</p></div></div>`; return; }
+  let saved = null; try { saved = localStorage.getItem(STORE_KEY); } catch (_) {}
+  if (saved) { try { DB = await unlock(saved); PASS = saved; return start(); } catch (_) { try { localStorage.removeItem(STORE_KEY); } catch (__) {} } }
+  lockScreen();
+})();
+</script>

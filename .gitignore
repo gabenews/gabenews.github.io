@@ -1,0 +1,25 @@
+# На GitHub попадают ТОЛЬКО перечисленные ниже файлы. Всё остальное
+# (вход в Telegram, ключи, пароль сайта, отчёты в открытом виде, логи) остаётся на компьютере.
+*
+!.gitignore
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+!README.md
+!requirements.txt
+!stats.py
+!rich_table.py
+!table_img.py
+!export_posts.py
+!build_site.py
+!send_summary.py
+!sync_data.py
+!site_template.html
+!brand/
+!brand/face.webp
+!brand/face_mask.png
+!brand/logo_small.webp
+!emoji/
+!emoji/*.webp
+!data/
+!data/reports.enc
