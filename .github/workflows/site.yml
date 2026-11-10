@@ -3,7 +3,7 @@ name: Сайт статистики
 # Каждые 15 минут: забрать посты из Telegram, собрать зашифрованный сайт и выложить на GitHub Pages.
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "7,22,37,52 * * * *"   # каждые 15 минут, но не ровно в :00 — в это время GitHub перегружен
   workflow_dispatch:
   push:
     branches: [main]
