@@ -214,6 +214,9 @@ td small { display: block; color: var(--faint); font-size: 11px; }
 .post .fw small { display: block; color: var(--muted); font-weight: 600; font-size: 11px; }
 .cols { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
 .cols.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols > div { align-content: start; }
+.flop-ed { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.flop-ed .bar i { background: var(--bad); }
 .reacts { display: grid; gap: 8px; }
 .react { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
 .react .e { font-size: 18px; text-align: center; }
@@ -655,14 +658,15 @@ function pageStats() {
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Когда редакция на связи</h2><p>Дни недели по вертикали, часы МСК по горизонтали, за ${label}. Видно утренний старт, вечерний пик и ночные посты.</p></div>
-      <div class="card scroll" id="hours"></div>
-    </section>
 
     <section class="section">
       <div class="section-head"><h2>Что зашло читателям</h2><p>Посты с наибольшим числом репостов за ${label} и самые частые реакции.</p></div>
       <div class="cols"><div class="card posts" id="top-posts"></div><div class="card" id="reacts"></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Что не зашло читателям</h2><p>Посты с наименьшим числом репостов за ${label} и у кого чаще всего посты попадают в 20 худших.</p></div>
+      <div class="cols"><div class="card posts" id="flop-posts"></div><div class="card" id="flop-eds"></div></div>
     </section>
 
     <section class="section">
@@ -772,16 +776,6 @@ function drawStats() {
   let rec = 0, recDay = r.from; days.forEach(n => { const v = perDay[n] || 0; if (v > rec) { rec = v; recDay = n; } });
   $("#flow-note").textContent = `Сколько постов выходило каждый день и у кого. Рекорд за период: ${dmy(numDay(recDay))} — ${rec} ${plural(rec, "пост", "поста", "постов")}. Совместный пост засчитан первому автору.`;
 
-  /* часы */
-  const grid = Array.from({ length: 7 }, () => Array(24).fill(0));
-  a.posts.forEach(p => grid[dow(p.d)][+p.d.slice(11, 13)]++);
-  const maxH = Math.max(...grid.flat(), 1);
-  const lv = v => !v ? 0 : Math.min(4, 1 + Math.floor((v / maxH) * 3.999));
-  $("#hours").innerHTML = `<div class="heat-week"><span></span>${Array.from({ length: 24 }, (_, h) => `<span class="h">${h % 3 ? "" : h}</span>`).join("")}
-    ${grid.map((row, d) => `<span>${DOW[d]}</span>` + row.map((v, h) => `<span class="c" style="background:var(--heat-${lv(v)})" data-tip="<b>${DOW[d]}, ${String(h).padStart(2, "0")}:00–${String(h).padStart(2, "0")}:59</b><br>${v} ${plural(v, "пост", "поста", "постов")}"></span>`).join("")).join("")}</div>
-    <div class="scale" style="margin-top:10px">меньше ${[0, 1, 2, 3, 4].map(i => `<span class="c" style="background:var(--heat-${i})"></span>`).join("")} больше</div>`;
-  tipOn($("#hours"));
-
   /* что зашло */
   const topP = [...a.posts].sort((x, y) => y.fw - x.fw || x.id - y.id).slice(0, 6);
   $("#top-posts").innerHTML = topP.length ? topP.map((p, i) => postRow(p, i + 1)).join("") : `<p class="note">За период постов нет.</p>`;
@@ -790,6 +784,18 @@ function drawStats() {
   $("#reacts").innerHTML = `<div class="eyebrow" style="margin-bottom:12px">Чем реагируют чаще всего</div><div class="reacts">
     ${rxs.map(([k, v]) => `<div class="react"><span class="e">${k === "custom" ? "✨" : esc(k)}</span><span class="bar"><i style="width:${pct(v, rmax)}%"></i></span><b>${short(v)}</b></div>`).join("")}</div>
     <p class="note" style="margin-top:12px">✨ — кастомные и платные реакции вместе.</p>`;
+
+  /* что не зашло */
+  const byFlop = [...a.posts].sort((x, y) => x.fw - y.fw || x.id - y.id);
+  $("#flop-posts").innerHTML = byFlop.length ? byFlop.slice(0, 6).map((p, i) => postRow(p, i + 1)).join("") : `<p class="note">За период постов нет.</p>`;
+  const flop20 = byFlop.slice(0, 20), fc = {};
+  flop20.forEach(p => p.e.forEach(k => fc[k] = (fc[k] || 0) + 1));
+  const fRows = DB.editors.map(e => ({ e, n: fc[e.key] || 0, of: a.by[e.key].posts })).filter(x => x.of).sort((x, y) => y.n - x.n);
+  const fmax = Math.max(1, ...fRows.map(x => x.n));
+  $("#flop-eds").innerHTML = `<div class="eyebrow" style="margin-bottom:12px">Постов в 20 худших</div><div class="reacts">
+    ${fRows.map(x => `<div class="flop-ed">${ava(x.e, "sm")}<span><b style="font-size:13px">${esc(x.e.name)}</b><span class="bar" style="display:block;margin-top:4px"><i style="width:${pct(x.n, fmax)}%"></i></span></span>
+      <b>${x.n}<small style="display:block;color:var(--muted);font-weight:600;font-size:11px;text-align:right">из ${x.of}</small></b></div>`).join("")}</div>
+    <p class="note" style="margin-top:12px">«из N» — сколько всего постов у редактора за ${r.label}. Совместный пост засчитан обоим.</p>`;
 
   /* рекорды */
   const P = a.posts;
@@ -900,8 +906,9 @@ function drawWeek() {
   const w = DB.liveWeek; if (!w) return;
   const from = dayNum(w.start), today = Math.min(dayNum(TODAY), from + 6);
   const posts = DB.live;
-  const by = {}; DB.editors.forEach(e => by[e.key] = { posts: 0, fw: 0, v: 0, days: Array(7).fill(0), shifts: 0 });
-  posts.forEach(p => p.e.forEach(k => { const b = by[k]; if (!b) return; b.posts++; b.fw += p.fw; b.v += p.v; b.days[dayNum(p.d) - from]++; }));
+  const by = {}; DB.editors.forEach(e => by[e.key] = { posts: 0, fw: 0, v: 0, days: Array(7).fill(0), fwDays: Array(7).fill(0), shifts: 0 });
+  posts.forEach(p => p.e.forEach(k => { const b = by[k]; if (!b) return; const i = dayNum(p.d) - from;
+    b.posts++; b.fw += p.fw; b.v += p.v; b.days[i]++; b.fwDays[i] += p.fw; }));
   DB.liveShifts.forEach(x => by[x.e] && by[x.e].shifts++);
   const rows = DB.editors.map(e => ({ e, b: by[e.key], kf: kf(by[e.key].fw, by[e.key].posts) })).sort((x, y) => y.kf - x.kf || y.b.posts - x.b.posts);
   $("#live-rating").innerHTML = `<table><thead><tr><th></th><th>Редактор</th><th>КФ сейчас</th><th>Постов</th><th>Репостов</th><th>Смен</th><th>Лучший пост</th></tr></thead><tbody>
@@ -918,10 +925,15 @@ function drawWeek() {
     data: Array.from({ length: 7 }, (_, i) => from + i > today ? null : posts.filter(p => dayNum(p.d) === from + i && p.e[0] === e.key).length) })), { stacked: true });
 
   const cls = i => from + i === today ? "today" : from + i > today ? "future" : "";
+  // в ячейке: постов, под ними — репосты этих постов
+  const cell = (n, fw, strong) => n ? `${strong ? `<b>${n}</b>` : n}<small>${fmt(fw)} 🔁</small>` : "·";
+  const chan = Array.from({ length: 7 }, (_, i) => { const ps = posts.filter(p => dayNum(p.d) === from + i);
+    return { n: ps.length, fw: ps.reduce((a, p) => a + p.fw, 0) }; });
   $("#live-days").innerHTML = `<table class="daytable"><thead><tr><th>Редактор</th>${labels.map((l, i) => `<th class="${cls(i)}">${l}</th>`).join("")}<th>Всего</th></tr></thead><tbody>
-    ${DB.editors.map(e => `<tr><td><div class="who">${ava(e, "sm")}<b>${esc(e.name)}</b></div></td>${by[e.key].days.map((n, i) => `<td class="${cls(i)}">${from + i > today ? "" : n || "·"}</td>`).join("")}<td><b>${by[e.key].posts}</b></td></tr>`).join("")}
-    <tr><td><b>Весь канал</b></td>${Array.from({ length: 7 }, (_, i) => `<td class="${cls(i)}"><b>${from + i > today ? "" : posts.filter(p => dayNum(p.d) === from + i).length}</b></td>`).join("")}<td><b>${posts.length}</b></td></tr>
-    </tbody></table>`;
+    ${DB.editors.map(e => `<tr><td><div class="who">${ava(e, "sm")}<b>${esc(e.name)}</b></div></td>${by[e.key].days.map((n, i) => `<td class="${cls(i)}">${from + i > today ? "" : cell(n, by[e.key].fwDays[i])}</td>`).join("")}<td>${cell(by[e.key].posts, by[e.key].fw, true) === "·" ? "<b>0</b>" : cell(by[e.key].posts, by[e.key].fw, true)}</td></tr>`).join("")}
+    <tr><td><b>Весь канал</b></td>${chan.map((c, i) => `<td class="${cls(i)}">${from + i > today ? "" : c.n ? cell(c.n, c.fw, true) : "<b>0</b>"}</td>`).join("")}<td>${cell(posts.length, posts.reduce((a, p) => a + p.fw, 0), true)}</td></tr>
+    </tbody></table>
+    <p class="note" style="margin:8px 0 0">В каждой ячейке: сверху — постов за день, снизу — сколько репостов они набрали на сейчас.</p>`;
 
   $("#live-top").innerHTML = [...posts].sort((a, b) => b.fw - a.fw || a.id - b.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
   $("#live-feed").innerHTML = [...posts].sort((a, b) => b.id - a.id).slice(0, 8).map(p => postRow(p, "•")).join("") || `<p class="note">Постов пока нет.</p>`;
