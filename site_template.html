@@ -1090,7 +1090,7 @@ function pageEditor(e) {
     </section>
 
     <section class="section">
-      <div class="section-head"><h2>Последние посты</h2><p>Все учтённые посты редактора, новые сверху.</p></div>
+      <div class="section-head"><h2>Последние посты</h2><p>Все посты редактора, включая сегодняшние, новые сверху. Без рекламы и дайджестов.</p></div>
       <div class="card posts" id="ed-feed"></div>
       <button class="btn feed-more" id="ed-more">Показать ещё</button>
     </section>`);
@@ -1108,7 +1108,8 @@ function drawEditor(e) {
   const mine = DB.counted.filter(p => p.e.includes(e.key));
   $("#ed-best").innerHTML = [...mine].sort((x, y) => y.fw - x.fw || x.id - y.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
   $("#ed-worst").innerHTML = [...mine].sort((x, y) => x.fw - y.fw || x.id - y.id).slice(0, 5).map((p, i) => postRow(p, i + 1)).join("") || `<p class="note">Постов пока нет.</p>`;
-  const feed = [...mine].sort((x, y) => y.id - x.id);
+  // лента — все посты редактора, включая идущую неделю (в отличие от статистики, где только закрытые недели)
+  const feed = DB.posts.filter(p => p.k === "post" && p.e.includes(e.key)).sort((x, y) => y.id - x.id);
   let shown = 0;
   const more = () => {
     $("#ed-feed").insertAdjacentHTML("beforeend", feed.slice(shown, shown + 15).map(p => postRow(p, "•")).join(""));
