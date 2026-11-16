@@ -219,23 +219,78 @@ def is_digest(text):
     return "#дайджест" in text.lower()
 
 
-def count_shifts(posts):
-    """Сколько смен у каждого автора. Учитываются все его посты (и дайджесты, и реклама)."""
+# Окна смен по МСК (часы от начала дня): день 09–17, вечер 17–05 следующего дня
+SHIFT_WINDOWS = {"day": (9, 17), "evening": (17, 29)}
+_SCHEDULE = None
+
+
+def schedule_days():
+    """Расписание из Google Таблицы: {"ГГГГ-ММ-ДД": {"day": {...}, "evening": {...}}} (пусто, если недоступно)."""
+    global _SCHEDULE
+    if _SCHEDULE is None:
+        try:
+            import schedule as sch
+            _SCHEDULE = {d: v for m in sch.load(datetime.now(MSK).date()) for d, v in m["days"].items()}
+        except Exception as e:  # без расписания смены считаются по старому правилу
+            print("Расписание недоступно:", type(e).__name__)
+            _SCHEDULE = {}
+    return _SCHEDULE
+
+
+def shift_list(items):
+    """Смены по расписанию. items: [(время поста, [авторы])], все посты (и дайджесты, и реклама).
+    Смена из расписания засчитывается тому, кто её фактически вёл: у кого больше всех постов в окне смены
+    (не меньше SHIFT_MIN_POSTS); если таких нет — тому, кто стоял в расписании, если он постил в это время.
+    Ночные экстра-посты вне окна своей смены сменой не считаются.
+    Дни без расписания (до появления таблицы) — по старому правилу: 3+ поста подряд без перерыва больше 3 часов.
+    Возвращает [{"e": автор, "start": начало смены (datetime МСК), "n": постов в смене}]."""
+    plan = schedule_days()
+    items = [(t.astimezone(MSK), authors) for t, authors in items]
+    shift_day = lambda t: (t - timedelta(hours=5)).date()
+    out, covered = [], set()
+    for day in sorted({shift_day(t) for t, _ in items}):
+        p = plan.get(day.isoformat())
+        if not p:
+            continue
+        covered.add(day)
+        for slot, (h0, h1) in SHIFT_WINDOWS.items():
+            lo = datetime.combine(day, time.min, MSK) + timedelta(hours=h0)
+            hi = datetime.combine(day, time.min, MSK) + timedelta(hours=h1)
+            cnt = {}
+            for t, authors in items:
+                if lo <= t < hi:
+                    for a in authors:
+                        cnt[a] = cnt.get(a, 0) + 1
+            planned = (p.get(slot) or {}).get("editor")
+            top = max(cnt.items(), key=lambda kv: kv[1]) if cnt else None
+            who = top[0] if top and top[1] >= SHIFT_MIN_POSTS else (planned if planned and cnt.get(planned) else None)
+            if who:
+                out.append({"e": who, "start": lo, "n": cnt.get(who, 0)})
+    # дни без расписания — старое правило
     times = {}
-    for p in posts:
-        for a in split_authors(p["author"]):
-            times.setdefault(a, []).append(p["date"])
-    shifts = {}
+    for t, authors in items:
+        if shift_day(t) not in covered:
+            for a in authors:
+                times.setdefault(a, []).append(t)
     for a, ts in times.items():
         ts.sort()
-        n, run = 0, 1
-        for prev, t in zip(ts, ts[1:]):
-            if t - prev <= SHIFT_MAX_GAP:
-                run += 1
-            else:
-                n += run >= SHIFT_MIN_POSTS
-                run = 1
-        shifts[a] = n + (run >= SHIFT_MIN_POSTS)
+        run = [ts[0]]
+        for t in ts[1:] + [None]:
+            if t is not None and t - run[-1] <= SHIFT_MAX_GAP:
+                run.append(t)
+                continue
+            if len(run) >= SHIFT_MIN_POSTS:
+                out.append({"e": a, "start": run[0], "n": len(run)})
+            if t is not None:
+                run = [t]
+    return sorted(out, key=lambda x: x["start"])
+
+
+def count_shifts(posts):
+    """Сколько смен у каждого автора (см. shift_list)."""
+    shifts = {}
+    for x in shift_list([(p["date"], split_authors(p["author"])) for p in posts]):
+        shifts[x["e"]] = shifts.get(x["e"], 0) + 1
     return shifts
 
 

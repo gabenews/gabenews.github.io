@@ -72,25 +72,10 @@ def avatar(name):
 
 
 def shifts_of(posts):
-    """Смены как в stats.count_shifts: 3+ поста подряд без перерыва больше 3 часов."""
-    times = {}
-    for p in posts:
-        for a in p["editors"]:
-            times.setdefault(a, []).append(datetime.fromisoformat(p["date"]))
-    out = []
-    for a, ts in times.items():
-        ts.sort()
-        run = [ts[0]]
-        for t in ts[1:] + [None]:
-            if t is not None and t - run[-1] <= s.SHIFT_MAX_GAP:
-                run.append(t)
-                continue
-            if len(run) >= s.SHIFT_MIN_POSTS:
-                out.append({"e": a, "start": run[0].isoformat(timespec="minutes"),
-                            "end": run[-1].isoformat(timespec="minutes"), "n": len(run)})
-            if t is not None:
-                run = [t]
-    return sorted(out, key=lambda x: x["start"])
+    """Смены как в отчётах бота (stats.shift_list): по расписанию из таблицы. posts — все посты канала."""
+    items = [(datetime.fromisoformat(p["date"]), p["authors"]) for p in posts]
+    return [{"e": x["e"], "start": x["start"].isoformat(timespec="minutes"), "n": x["n"]}
+            for x in s.shift_list(items) if x["e"] in SITE_EDITORS]
 
 
 def weekly_reports():
@@ -140,7 +125,7 @@ def payload():
         "editors": [{"key": e, "slug": SLUGS[e], "name": DISPLAY_NAMES.get(e, e), "signature": e,
                      "role": ROLES[e], "avatar": avatar(e)} for e in SITE_EDITORS],
         "posts": posts,
-        "shifts": shifts_of(editor_posts),
+        "shifts": shifts_of(all_posts),
         "weeks": weekly_reports(),
         # прошлые месяцы не нужны — только текущий (и следующий, если его уже внесли в таблицу)
         "schedule": {"shifts": schedule.SHIFTS,
