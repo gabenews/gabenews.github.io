@@ -61,7 +61,7 @@ def main():
 
     posts = []
     for g in groups.values():
-        if not g["article"] and s.is_ad(g["text"], g["brand"]):
+        if not g["article"] and g["id"] not in s.NOT_AD_IDS and s.is_ad(g["text"], g["brand"]):
             kind = "ad"
         elif g["id"] in s.DIGEST_IDS or (not g["article"] and s.is_digest(g["text"])):
             kind = "digest"
