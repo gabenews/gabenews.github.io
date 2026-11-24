@@ -61,5 +61,15 @@ jobs:
         with:
           path: public
 
+      # GitHub иногда отказывает в выкладке (идёт предыдущая или сбой у них) — пробуем ещё раз через минуту
       - id: deploy
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Подождать перед повторной выкладкой
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 60
+
+      - id: deploy_retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4

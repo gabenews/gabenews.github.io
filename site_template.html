@@ -944,15 +944,19 @@ function planOf(day, slot) {
   return null;
 }
 // Кто реально вёл смену: больше всех постов в окне смены (день 09–17, вечер 17–05 следующего дня)
-function actualOf(day, slot) {
+// Как в подсчёте смен: если тот, кто стоит в расписании, сделал в окне смены 3+ поста — смена его,
+// остальные с 3+ постами — «помогал». Если он не вышел — смена того, у кого больше всех постов (подмена).
+function actualOf(day, slot, planned) {
   const n = dayNum(day), cnt = {};
   DB.posts.forEach(p => {
     const pn = dayNum(p.d), h = +p.d.slice(11, 13);
     const inDay = slot === "day" ? pn === n && h >= 9 && h < 17 : (pn === n && h >= 17) || (pn === n + 1 && h < 5);
     if (inDay) p.e.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
   });
-  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-  return best && best[1] >= DB.rules.shiftMin ? best[0] : null;
+  const min = DB.rules.shiftMin, ranked = Object.entries(cnt).sort((a, b) => b[1] - a[1]);
+  const who = planned && (cnt[planned] || 0) >= min ? planned : ranked[0] && ranked[0][1] >= min ? ranked[0][0] : null;
+  const helpers = ranked.filter(([k, c]) => k !== who && c >= min).map(([k]) => k);
+  return { who, helpers };
 }
 function slotHTML(day, shift, isPast) {
   const pl = planOf(day, shift.key);
@@ -960,8 +964,9 @@ function slotHTML(day, shift, isPast) {
   const e = pl.editor ? ED[pl.editor] : null;
   let note = `${SHIFT_ICON[shift.key]} ${shift.name}`;
   if (isPast && e) {
-    const fact = actualOf(day, shift.key);
-    note = fact === pl.editor ? `<small class="ok">${SHIFT_ICON[shift.key]} ✓ отработал</small>`
+    const { who: fact, helpers } = actualOf(day, shift.key, pl.editor);
+    const help = helpers.length ? ` · помогал ${helpers.map(k => esc(ED[k] ? ED[k].name : k)).join(", ")}` : "";
+    note = fact === pl.editor ? `<small class="ok" title="${help.slice(3)}">${SHIFT_ICON[shift.key]} ✓ отработал${help}</small>`
       : fact ? `<small class="off">${SHIFT_ICON[shift.key]} фактически ${esc(ED[fact].name)}</small>` : `<small>${SHIFT_ICON[shift.key]} ${shift.name}</small>`;
   } else note = `<small>${note}</small>`;
   const hit = SCHED_FOCUS && (pl.editor || pl.label) === SCHED_FOCUS;
@@ -1019,7 +1024,7 @@ function pageSchedule() {
       ${mine}
     </section>
     <section class="section">
-      <div class="section-head"><h2>${m.title}</h2><p>У прошедших смен отметка: ✓ — смену вёл тот, кто стоял в расписании; «фактически …» — больше всех постов в это время было у другого редактора.</p></div>
+      <div class="section-head"><h2>${m.title}</h2><p>У прошедших смен отметка: ✓ — смену отработал тот, кто стоял в расписании; «помогал …» — другой редактор тоже выкладывал посты в эту смену; «фактически …» — по расписанию не вышел, смену вёл другой.</p></div>
       <div class="card"><div class="cal ${SCHED_FOCUS ? "focus" : ""}" style="${SCHED_FOCUS && ED[SCHED_FOCUS] ? `--fc:${COLORS[SCHED_FOCUS]}` : ""}">${cells}</div></div>
     </section>`);
 }
