@@ -103,7 +103,12 @@ def norm(s):
     return " ".join(s.split()).casefold()
 
 
+# Другие подписи того же человека -> основная подпись (редактор сменил подпись в канале)
+SIGNATURE_ALIASES = {
+    "Кирилл": "Who is it?",   # с 18.11.2026 22:59 подписывается «Кирилл»
+}
 CANON = {norm(e): e for e in EDITORS + EXCLUDED}
+CANON.update({norm(alias): main for alias, main in SIGNATURE_ALIASES.items()})
 EXCLUDED_NORM = {norm(e) for e in EXCLUDED}
 
 
@@ -239,8 +244,8 @@ def schedule_days():
 
 def shift_list(items):
     """Смены по расписанию. items: [(время поста, [авторы])], все посты (и дайджесты, и реклама).
-    Смена из расписания засчитывается тому, кто её фактически вёл: у кого больше всех постов в окне смены
-    (не меньше SHIFT_MIN_POSTS); если таких нет — тому, кто стоял в расписании, если он постил в это время.
+    Смена из расписания засчитывается тому, кто в ней стоит, если он сделал в окне смены не меньше SHIFT_MIN_POSTS
+    постов; если не вышел — тому, у кого больше всех постов в окне (подмена).
     Ночные экстра-посты вне окна своей смены сменой не считаются.
     Дни без расписания (до появления таблицы) — по старому правилу: 3+ поста подряд без перерыва больше 3 часов.
     Возвращает [{"e": автор, "start": начало смены (datetime МСК), "n": постов в смене}]."""
@@ -263,7 +268,12 @@ def shift_list(items):
                         cnt[a] = cnt.get(a, 0) + 1
             planned = (p.get(slot) or {}).get("editor")
             top = max(cnt.items(), key=lambda kv: kv[1]) if cnt else None
-            who = top[0] if top and top[1] >= SHIFT_MIN_POSTS else (planned if planned and cnt.get(planned) else None)
+            if planned and cnt.get(planned, 0) >= SHIFT_MIN_POSTS:
+                who = planned                      # вышел тот, кто стоял в расписании (помощь других — не смена)
+            elif top and top[1] >= SHIFT_MIN_POSTS:
+                who = top[0]                       # подмена: смену вёл другой редактор
+            else:
+                who = planned if planned and cnt.get(planned) else None
             if who:
                 out.append({"e": who, "start": lo, "n": cnt.get(who, 0)})
     # дни без расписания — старое правило
