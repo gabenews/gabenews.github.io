@@ -97,6 +97,7 @@ button { font: inherit; color: inherit; }
 .slot b { font-size: 12px; font-weight: 800; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot small { display: block; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slot small.ok { color: var(--good); }
+.slot small.help { white-space: normal; overflow: visible; color: var(--muted); line-height: 1.25; }
 .slot small.off { color: var(--bad); }
 .slot.empty { border-left-color: var(--line); color: var(--faint); grid-template-columns: 1fr; font-size: 11px; }
 .slot.gone b { color: var(--muted); font-weight: 700; }
@@ -965,8 +966,8 @@ function slotHTML(day, shift, isPast) {
   let note = `${SHIFT_ICON[shift.key]} ${shift.name}`;
   if (isPast && e) {
     const { who: fact, helpers } = actualOf(day, shift.key, pl.editor);
-    const help = helpers.length ? ` · помогал ${helpers.map(k => esc(ED[k] ? ED[k].name : k)).join(", ")}` : "";
-    note = fact === pl.editor ? `<small class="ok" title="${help.slice(3)}">${SHIFT_ICON[shift.key]} ✓ отработал${help}</small>`
+    const help = helpers.length ? `<small class="help">помогал${helpers.length > 1 ? "и" : ""}: ${helpers.map(k => esc(ED[k] ? ED[k].name : k)).join(", ")}</small>` : "";
+    note = fact === pl.editor ? `<small class="ok">${SHIFT_ICON[shift.key]} ✓ отработал</small>${help}`
       : fact ? `<small class="off">${SHIFT_ICON[shift.key]} фактически ${esc(ED[fact].name)}</small>` : `<small>${SHIFT_ICON[shift.key]} ${shift.name}</small>`;
   } else note = `<small>${note}</small>`;
   const hit = SCHED_FOCUS && (pl.editor || pl.label) === SCHED_FOCUS;
